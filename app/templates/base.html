@@ -17,10 +17,9 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hevy.css') }}">
 
-  {# Alpine.js + HTMX via CDN (pas de build) #}
-  <script defer src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+  {# Lucide + HTMX en head (chargement anticipé) #}
   <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
 
   {% block head_extra %}{% endblock %}
 </head>
@@ -88,8 +87,12 @@
     {% endif %}
   </div>
 
-  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  {# App JS + scripts spécifiques à la page (enregistrent Alpine.data avant Alpine.start) #}
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   {% block scripts %}{% endblock %}
+
+  {# Alpine en dernier pour que les components Alpine.data soient enregistrés avant init #}
+  <script defer src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js"></script>
 
   <script>
     // Init lucide icons après chargement
