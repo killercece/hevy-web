@@ -14,65 +14,78 @@
 
 {% block content %}
 <div class="container" x-data="historyFeed()" x-init="load()">
-  <div class="stats-row" x-show="stats">
+
+  {# Stats rapides en header #}
+  <div class="stats-row stats-row--rich mb-3" x-show="stats">
     <div class="stat">
+      <span class="stat__icon"><i data-lucide="calendar-check"></i></span>
       <div class="stat__value" x-text="stats.workouts_count || 0"></div>
       <div class="stat__label">Workouts</div>
     </div>
     <div class="stat">
+      <span class="stat__icon"><i data-lucide="weight"></i></span>
       <div class="stat__value" x-text="stats.total_volume_display || '0 kg'"></div>
-      <div class="stat__label">Volume total</div>
+      <div class="stat__label">Volume</div>
     </div>
     <div class="stat">
+      <span class="stat__icon"><i data-lucide="clock"></i></span>
       <div class="stat__value" x-text="stats.total_duration_display || '0h'"></div>
       <div class="stat__label">Temps</div>
     </div>
   </div>
 
-  <div class="stack" x-show="workouts.length > 0">
-    <template x-for="w in workouts" :key="w.id">
-      <a :href="`/workouts/${w.id}`" class="workout-card" style="display:block;color:inherit;">
-        <div class="workout-card__header">
-          <span class="workout-card__date" x-text="w.date_relative || formatDate(w.end_time)"></span>
-          <template x-if="w.pr_count">
-            <span class="badge badge--pr">
-              <i data-lucide="trophy" style="width:10px;height:10px;"></i>
-              <span x-text="w.pr_count + ' PR'"></span>
-            </span>
-          </template>
+  {# Timeline : workouts groupés par header de date #}
+  <div x-show="grouped.length > 0">
+    <template x-for="group in grouped" :key="group.label">
+      <div>
+        <div class="history-date-head">
+          <span class="history-date-head__label" x-text="group.label"></span>
+          <span class="history-date-head__line"></span>
         </div>
-
-        <div class="workout-card__title" x-text="w.title || 'Workout'"></div>
-
-        <div class="workout-card__stats">
-          <span class="workout-card__stat">
-            <i data-lucide="clock"></i>
-            <span x-text="formatDuration(w.durationSeconds)"></span>
-          </span>
-          <span class="workout-card__stat">
-            <i data-lucide="weight"></i>
-            <span x-text="formatVolume(w.totalVolume)"></span>
-          </span>
-          <span class="workout-card__stat">
-            <i data-lucide="list-checks"></i>
-            <span x-text="(w.totalSets || 0) + ' sets'"></span>
-          </span>
-        </div>
-
-        <div class="workout-card__ex-list">
-          <template x-for="ex in (w.exerciseHistory || []).slice(0, 5)" :key="ex.exerciseId + ex.name">
-            <div class="workout-card__ex-line">
-              <span><strong x-text="(ex.sets || []).length + '×'"></strong> <span x-text="ex.name"></span></span>
-              <span x-text="bestSet(ex)"></span>
+        <template x-for="w in group.items" :key="w.id">
+          <a :href="`/workouts/${w.id}`" class="history-card" style="display:block;color:inherit;">
+            <div class="row row--between" style="margin-bottom: var(--space-2);">
+              <span class="history-card__subtitle" x-text="w.date_relative || formatDate(w.end_time)" style="margin-bottom: 0;"></span>
+              <template x-if="w.pr_count">
+                <span class="badge badge--pr">
+                  <i data-lucide="trophy" style="width:10px;height:10px;"></i>
+                  <span x-text="w.pr_count + ' PR'"></span>
+                </span>
+              </template>
             </div>
-          </template>
-          <template x-if="(w.exerciseHistory || []).length > 5">
-            <div class="workout-card__ex-line">
-              <span class="text-tertiary" x-text="'+ ' + ((w.exerciseHistory.length) - 5) + ' autres'"></span>
+
+            <div class="history-card__title" x-text="w.title || 'Workout'"></div>
+
+            <div class="history-card__stats">
+              <span><i data-lucide="clock" style="width:14px;height:14px;vertical-align:-2px;"></i> <strong x-text="formatDuration(w.durationSeconds)"></strong></span>
+              <span><i data-lucide="weight" style="width:14px;height:14px;vertical-align:-2px;"></i> <strong x-text="formatVolume(w.totalVolume)"></strong></span>
+              <span><i data-lucide="list-checks" style="width:14px;height:14px;vertical-align:-2px;"></i> <strong x-text="w.totalSets || 0"></strong> sets</span>
             </div>
-          </template>
-        </div>
-      </a>
+
+            <div>
+              <template x-for="(ex, i) in (w.exerciseHistory || []).slice(0, 5)" :key="i">
+                <div class="history-card__ex-row">
+                  <div class="history-card__ex-thumb">
+                    <template x-if="ex.cdn_video_url">
+                      <video :data-lazy-src="ex.cdn_video_url" muted playsinline loop preload="none"></video>
+                    </template>
+                    <template x-if="!ex.cdn_video_url">
+                      <div class="ex-list__thumb-fallback"><i data-lucide="dumbbell"></i></div>
+                    </template>
+                  </div>
+                  <div class="history-card__ex-name"><strong x-text="(ex.sets || []).length + '×'"></strong> <span x-text="ex.name"></span></div>
+                  <div class="history-card__ex-sets" x-text="bestSet(ex)"></div>
+                </div>
+              </template>
+              <template x-if="(w.exerciseHistory || []).length > 5">
+                <div class="text-tertiary text-sm" style="padding: 6px 0;">
+                  + <span x-text="(w.exerciseHistory.length) - 5"></span> autres
+                </div>
+              </template>
+            </div>
+          </a>
+        </template>
+      </div>
     </template>
   </div>
 
@@ -87,8 +100,8 @@
   </div>
 
   <div x-show="loading" class="stack">
-    <div class="skeleton" style="height:120px;"></div>
-    <div class="skeleton" style="height:120px;"></div>
+    <div class="skeleton" style="height:180px; border-radius: var(--radius-lg);"></div>
+    <div class="skeleton" style="height:180px; border-radius: var(--radius-lg);"></div>
   </div>
 
   <button x-show="hasMore" class="btn btn--outline btn--block mt-4" @click="loadMore" x-text="loadingMore ? 'Chargement...' : 'Charger plus'"></button>
@@ -115,7 +128,10 @@
           this.stats = d.stats || null;
         } catch(e) {}
         this.loading = false;
-        this.$nextTick(() => window.lucide?.createIcons());
+        this.$nextTick(() => {
+          if (window.lucide) window.lucide.createIcons();
+          if (window.Hevy?.video) window.Hevy.video.scan(document);
+        });
       },
 
       async loadMore() {
@@ -128,7 +144,37 @@
           this.hasMore = d.has_more || false;
         } catch(e) {}
         this.loadingMore = false;
-        this.$nextTick(() => window.lucide?.createIcons());
+        this.$nextTick(() => {
+          if (window.lucide) window.lucide.createIcons();
+          if (window.Hevy?.video) window.Hevy.video.scan(document);
+        });
+      },
+
+      /** Regroupe les workouts par date relative (Aujourd'hui / Hier / Cette semaine / plus ancien). */
+      get grouped() {
+        const groups = { today: [], yest: [], week: [], older: {} };
+        for (const w of this.workouts) {
+          const d = w.end_time ? new Date(w.end_time) : null;
+          if (!d) { groups.older['Plus ancien'] = groups.older['Plus ancien'] || []; groups.older['Plus ancien'].push(w); continue; }
+          const days = Math.floor((Date.now() - w.end_time) / 86400000);
+          if (days === 0) groups.today.push(w);
+          else if (days === 1) groups.yest.push(w);
+          else if (days < 7) groups.week.push(w);
+          else {
+            const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+            const key = label.charAt(0).toUpperCase() + label.slice(1);
+            groups.older[key] = groups.older[key] || [];
+            groups.older[key].push(w);
+          }
+        }
+        const out = [];
+        if (groups.today.length) out.push({ label: "Aujourd'hui", items: groups.today });
+        if (groups.yest.length)  out.push({ label: "Hier", items: groups.yest });
+        if (groups.week.length)  out.push({ label: "Cette semaine", items: groups.week });
+        for (const key of Object.keys(groups.older)) {
+          out.push({ label: key, items: groups.older[key] });
+        }
+        return out;
       },
 
       formatDuration(s) {

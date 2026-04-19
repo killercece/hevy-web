@@ -62,16 +62,25 @@ def _format_volume(volume_kg: float, unit: str = "metric") -> str:
 
 
 def _routine_view_dict(routine: Routine) -> dict:
-    """Adapte un Routine pour les templates (attend .title, .total_sets, etc.)."""
+    """Adapte un Routine pour les templates (attend .title, .total_sets, etc.).
+
+    Expose aussi les 3 premières vidéos CDN pour l'aperçu sur carte routine.
+    """
     total_sets = sum(len(re.sets) for re in routine.exercises)
+    exercises = []
+    previews: list[str] = []
+    for re in routine.exercises:
+        name = re.exercise.name if re.exercise else "?"
+        video = re.exercise.cdn_video_url if re.exercise else None
+        exercises.append({"name": name, "cdn_video_url": video})
+        if video and len(previews) < 3:
+            previews.append(video)
     return {
         "id": routine.id,
         "title": routine.name,
         "total_sets": total_sets,
-        "exercises": [
-            {"name": re.exercise.name if re.exercise else "?"}
-            for re in routine.exercises
-        ],
+        "exercises": exercises,
+        "preview_videos": previews,
         "last_performed": None,
         "last_performed_relative": None,
     }
@@ -99,6 +108,9 @@ def _workout_view_dict(workout: Workout, unit: str = "metric") -> dict:
                 "name": we.exercise.name if we.exercise else "?",
                 "sets_count": len(completed_sets),
                 "best_display": best_display,
+                "cdn_video_url": (
+                    we.exercise.cdn_video_url if we.exercise else None
+                ),
             }
         )
     return {

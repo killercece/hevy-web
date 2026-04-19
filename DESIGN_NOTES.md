@@ -102,6 +102,39 @@
 - App Store : screenshots officiels
 - Resources APK décompilé : `/projects/hevy/src/resources/res/`
 
+## Refonte qualité avril 2026 — principes appliqués
+
+1. **Vidéos d'exercices** : intégration du CDN public Hevy
+   (`https://d2l9nsnmtah87f.cloudfront.net/exercise-assets/{id}-{slug}_{muscle}.mp4`).
+   Chaque exercice a (quand trouvé) un `cdn_video_id` qui compose une URL
+   mp4 publique utilisable en `<video autoplay muted loop playsinline>`.
+2. **Matching TSV** : `app/data/hevy_exercises_cdn.tsv` liste ~363 vidéos.
+   Un algo de matching fuzzy (normalisation, intersection tokens, exclusion
+   variantes `(female)`/`(version-2)`) attache les vidéos aux exercices
+   curated et complète la bibliothèque avec les entrées manquantes.
+3. **Lazy video loader** : `Hevy.video.scan()` + IntersectionObserver —
+   les `<video data-lazy-src="...">` ne sont chargées que quand visibles,
+   permettant d'afficher des centaines de vignettes sans saturer le réseau.
+4. **Rest timer circulaire** : SVG `stroke-dashoffset` qui décroît, plus
+   grosse typo centrale, vibration longue + beep généré via AudioContext
+   en fallback quand le mp3 n'est pas disponible.
+5. **Grille d'exercices Hevy-like** : `.ex-card` avec aspect-ratio 4/5,
+   vidéo en fond, overlay dégradé, nom en bas. Toggle grid/list persistant
+   dans localStorage.
+6. **Stats row enrichie** : icônes contextuelles discrètes en haut à droite,
+   valeurs en 26px bold letter-spacing -0.5, cartes avec border.
+7. **Tokens ajoutés** : `--space-10/12/14`, `--radius-2xl`, `--shadow-card`,
+   `--shadow-press`, couleurs spécifiques types de sets (warmup jaune,
+   drop bleu, failure rouge).
+8. **Micro-interactions** : `translateY(-1px)` + shadow au hover des cards,
+   `chipPop` à l'activation d'un chip, `checkPop` quand on valide un set.
+9. **Bottom nav mobile** : `backdrop-filter: blur(12px)` + glow léger
+   autour de l'icône active.
+10. **Historique timeline** : regroupement par date relative (Aujourd'hui,
+    Hier, Cette semaine, puis par mois) avec séparateurs visuels, chaque
+    card de workout embarque les mini-thumbnails vidéo des 5 premiers
+    exercices.
+
 ## Points d'attention (UX Hevy)
 
 1. **Saisie fluide** : focus auto sur prochain input après check

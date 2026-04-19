@@ -5,6 +5,9 @@
 <header class="app-header">
   <h1 class="app-header__title">Hevy<span class="text-accent">.</span></h1>
   <div class="app-header__actions">
+    <a href="{{ url_for('main.workout_history') }}" class="app-header__action" aria-label="Historique">
+      <i data-lucide="bar-chart-3"></i>
+    </a>
     <a href="{{ url_for('main.settings') }}" class="app-header__action" aria-label="Paramètres">
       <i data-lucide="settings"></i>
     </a>
@@ -14,30 +17,46 @@
 
 {% block content %}
 <div class="container">
-  {# Hero CTA : Start Empty Workout #}
-  <a href="{{ url_for('main.workout_start') }}" class="hero-cta">
+
+  {# Hero CTA : Start Empty Workout — plus gros et plus présent #}
+  <a href="{{ url_for('main.workout_start') }}" class="hero-cta hero-cta--xl">
     <div class="hero-cta__icon">
       <i data-lucide="play"></i>
     </div>
     <div class="hero-cta__content">
-      <h3>Démarrer un workout vide</h3>
-      <p>Ajoute tes exercices à la volée</p>
+      <h3>Démarrer un workout</h3>
+      <p>Workout vide ou depuis une routine</p>
     </div>
     <i data-lucide="chevron-right" class="hero-cta__arrow"></i>
   </a>
 
-  {# Stats rapides #}
-  <div class="stats-row">
+  {# Actions secondaires sous le hero #}
+  <div class="hero-actions">
+    <a href="{{ url_for('main.routine_new') }}" class="btn">
+      <i data-lucide="list-plus"></i>
+      <span>Nouvelle routine</span>
+    </a>
+    <a href="{{ url_for('main.exercises_list') }}" class="btn">
+      <i data-lucide="dumbbell"></i>
+      <span>Exercices</span>
+    </a>
+  </div>
+
+  {# Stats rapides plus riches #}
+  <div class="stats-row stats-row--rich">
     <div class="stat">
+      <span class="stat__icon"><i data-lucide="calendar-check"></i></span>
       <div class="stat__value">{{ stats.workouts_count|default(0) }}</div>
       <div class="stat__label">Workouts</div>
     </div>
     <div class="stat">
+      <span class="stat__icon"><i data-lucide="weight"></i></span>
       <div class="stat__value">{{ stats.total_volume_display|default('0 kg') }}</div>
       <div class="stat__label">Volume</div>
     </div>
     <div class="stat">
-      <div class="stat__value">{{ stats.streak|default(0) }}🔥</div>
+      <span class="stat__icon"><i data-lucide="flame" class="text-warning"></i></span>
+      <div class="stat__value">{{ stats.streak|default(0) }}</div>
       <div class="stat__label">Série</div>
     </div>
   </div>

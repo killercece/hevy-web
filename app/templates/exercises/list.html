@@ -4,39 +4,86 @@
 {% block header %}
 <header class="app-header">
   <h1 class="app-header__title">Bibliothèque</h1>
+  <div class="app-header__actions">
+    <button type="button" class="app-header__action" @click="viewMode = (viewMode === 'grid' ? 'list' : 'grid')" aria-label="Basculer vue" x-data>
+      <i data-lucide="layout-grid" x-show="viewMode !== 'grid'"></i>
+      <i data-lucide="list" x-show="viewMode === 'grid'"></i>
+    </button>
+  </div>
 </header>
 {% endblock %}
 
 {% block content %}
 <div class="container" x-data="exerciseLibrary()" x-init="load()">
+
   <div class="searchbar mb-3">
     <i data-lucide="search"></i>
-    <input type="text" placeholder="Rechercher un exercice..." x-model="query">
+    <input type="text" placeholder="Rechercher un exercice..." x-model="query" autocomplete="off">
   </div>
 
   <div class="ex-library-filters">
     <button type="button" class="chip" :class="{ 'is-active': !muscleFilter }" @click="muscleFilter = null">Tous</button>
     <template x-for="mg in muscleGroups" :key="mg">
-      <button type="button" class="chip" :class="{ 'is-active': muscleFilter === mg }" @click="muscleFilter = mg" x-text="mg"></button>
+      <button type="button" class="chip" :class="{ 'is-active': muscleFilter === mg }" @click="muscleFilter = (muscleFilter === mg ? null : mg)" x-text="mg"></button>
     </template>
   </div>
 
   <div class="ex-library-filters" x-show="equipments.length > 0">
     <button type="button" class="chip chip--muted" :class="{ 'is-active': !equipmentFilter }" @click="equipmentFilter = null">Tout équipement</button>
     <template x-for="eq in equipments" :key="eq">
-      <button type="button" class="chip chip--muted" :class="{ 'is-active': equipmentFilter === eq }" @click="equipmentFilter = eq" x-text="eq"></button>
+      <button type="button" class="chip chip--muted" :class="{ 'is-active': equipmentFilter === eq }" @click="equipmentFilter = (equipmentFilter === eq ? null : eq)" x-text="eq"></button>
     </template>
   </div>
 
-  <div class="ex-list">
+  <div class="text-sm text-tertiary mb-3" x-show="!loading" x-text="filtered.length + ' exercice' + (filtered.length > 1 ? 's' : '')"></div>
+
+  {# Grille par défaut avec mini-vidéos #}
+  <div class="ex-grid" x-show="viewMode === 'grid' && !loading">
+    <template x-for="ex in filtered" :key="ex.id">
+      <a :href="`/exercises/${ex.id}`" class="ex-card">
+        <span class="ex-card__badge" x-show="ex.isCustom" x-text="'Custom'"></span>
+        <div class="ex-card__media">
+          <template x-if="ex.cdn_video_url">
+            <video class="ex-card__video"
+                   :data-lazy-src="ex.cdn_video_url"
+                   muted playsinline loop preload="none"
+                   poster=""></video>
+          </template>
+          <template x-if="!ex.cdn_video_url">
+            <div class="ex-card__placeholder">
+              <i data-lucide="dumbbell"></i>
+            </div>
+          </template>
+        </div>
+        <div class="ex-card__overlay"></div>
+        <div class="ex-card__body">
+          <div class="ex-card__name" x-text="ex.name"></div>
+          <div class="ex-card__meta">
+            <span x-text="ex.muscleGroup"></span>
+            <span x-show="ex.equipment" x-text="ex.equipment"></span>
+          </div>
+        </div>
+      </a>
+    </template>
+  </div>
+
+  {# Liste alternative, plus dense #}
+  <div class="ex-list" x-show="viewMode === 'list' && !loading">
     <template x-for="ex in filtered" :key="ex.id">
       <a :href="`/exercises/${ex.id}`" class="ex-list__item" style="color: inherit;">
-        <div class="ex-list__img"><i data-lucide="dumbbell"></i></div>
+        <div class="ex-list__thumb">
+          <template x-if="ex.cdn_video_url">
+            <video :data-lazy-src="ex.cdn_video_url" muted playsinline loop preload="none"></video>
+          </template>
+          <template x-if="!ex.cdn_video_url">
+            <div class="ex-list__thumb-fallback"><i data-lucide="dumbbell"></i></div>
+          </template>
+        </div>
         <div class="ex-list__body">
           <div class="ex-list__name" x-text="ex.name"></div>
           <div class="ex-list__meta">
             <span x-text="ex.muscleGroup"></span>
-            <span x-text="'· ' + ex.equipment"></span>
+            <span x-text="'· ' + (ex.equipment || 'bodyweight')"></span>
           </div>
         </div>
         <i data-lucide="chevron-right" class="text-tertiary"></i>
@@ -50,9 +97,9 @@
     <div class="empty__desc">Essaie un autre terme ou filtre.</div>
   </div>
 
-  <div x-show="loading" class="stack">
-    <template x-for="i in [1,2,3,4,5]" :key="i">
-      <div class="skeleton" style="height:72px;"></div>
+  <div x-show="loading" class="ex-grid">
+    <template x-for="i in [1,2,3,4,5,6,7,8]" :key="i">
+      <div class="skeleton skel-card"></div>
     </template>
   </div>
 </div>

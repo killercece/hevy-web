@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container" x-data="routineEditor({ id: {{ routine_id|tojson if routine_id else 'null' }} })">
+<div class="container" x-data="routineEditor({ id: {{ routine_id|tojson if routine_id else 'null' }} })" style="padding-bottom: 120px;">
   <form id="routine-form" method="post" @submit.prevent="save">
     <div class="stack">
       <div class="input-group">
@@ -41,44 +41,54 @@
     <div class="section mt-4">
       <div class="section__header">
         <div class="section__title">Exercices</div>
+        <span class="text-sm text-tertiary" x-text="data.exercises.length + ' · ' + totalSets + ' sets'"></span>
       </div>
 
       <div class="stack--sm">
         <template x-for="(ex, exIndex) in data.exercises" :key="exIndex">
-          <div class="routine-edit-ex">
-            <div class="routine-edit-ex__header">
-              <i data-lucide="grip-vertical" class="routine-edit-ex__drag"></i>
-              <span class="routine-edit-ex__name" x-text="ex.name"></span>
+          <div class="ex-block">
+            <div class="ex-block__header">
+              <div class="ex-block__thumb">
+                <template x-if="ex.cdn_video_url">
+                  <video :data-lazy-src="ex.cdn_video_url" muted playsinline loop preload="none"></video>
+                </template>
+                <template x-if="!ex.cdn_video_url">
+                  <div class="ex-block__thumb-fallback"><i data-lucide="dumbbell"></i></div>
+                </template>
+              </div>
+              <div class="flex-1" style="min-width: 0;">
+                <div class="ex-block__name" x-text="ex.name"></div>
+                <div class="ex-block__muscle" x-text="ex.muscleGroup"></div>
+              </div>
               <button type="button" class="btn btn--icon btn--sm" @click="removeExercise(exIndex)" aria-label="Retirer">
                 <i data-lucide="trash-2"></i>
               </button>
             </div>
 
-            <div class="stack--sm">
-              <div class="set-row__header">
-                <span>Set</span>
-                <span>Type</span>
-                <span>Kg</span>
-                <span>Reps</span>
-                <span></span>
-              </div>
-              <template x-for="(s, sIndex) in ex.sets" :key="sIndex">
-                <div class="routine-edit-set">
-                  <span class="set-row__num" x-text="sIndex + 1"></span>
-                  <select class="input input--num" x-model="s.type" style="padding:6px;font-size:12px;">
-                    <option value="normal">Normal</option>
-                    <option value="warmup">Warm-up</option>
-                    <option value="drop">Drop set</option>
-                    <option value="failure">Failure</option>
-                  </select>
-                  <input class="input input--num" type="number" inputmode="decimal" step="0.5" x-model.number="s.weight" placeholder="—">
-                  <input class="input input--num" type="number" inputmode="numeric" x-model.number="s.reps" placeholder="—">
-                  <button type="button" class="btn btn--icon btn--ghost btn--sm" @click="removeSet(exIndex, sIndex)" aria-label="Retirer">
-                    <i data-lucide="x"></i>
-                  </button>
-                </div>
-              </template>
+            <div class="set-row__header" style="grid-template-columns: 36px 1fr 60px 60px 36px;">
+              <span>SET</span>
+              <span>TYPE</span>
+              <span>KG</span>
+              <span>REPS</span>
+              <span></span>
             </div>
+
+            <template x-for="(s, sIndex) in ex.sets" :key="sIndex">
+              <div class="routine-edit-set">
+                <span class="set-row__num" x-text="sIndex + 1"></span>
+                <select class="input input--num" x-model="s.type" style="padding:6px;font-size:12px;">
+                  <option value="normal">Normal</option>
+                  <option value="warmup">Warm-up</option>
+                  <option value="drop">Drop</option>
+                  <option value="failure">Failure</option>
+                </select>
+                <input class="input input--num" type="number" inputmode="decimal" step="0.5" x-model.number="s.weight" placeholder="—">
+                <input class="input input--num" type="number" inputmode="numeric" x-model.number="s.reps" placeholder="—">
+                <button type="button" class="btn btn--icon btn--ghost btn--sm" @click="removeSet(exIndex, sIndex)" aria-label="Retirer">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
+            </template>
 
             <button type="button" class="ex-block__add-set" @click="addSet(exIndex)">
               <i data-lucide="plus"></i>
@@ -93,29 +103,28 @@
         </button>
       </div>
     </div>
-
-    <div class="stack mt-4">
-      <button type="submit" class="btn btn--primary btn--lg btn--block">
-        <i data-lucide="check"></i>
-        <span>Enregistrer la routine</span>
-      </button>
-      {% if routine_id %}
-      <button type="button" class="btn btn--outline btn--block" @click="duplicate">
-        <i data-lucide="copy"></i>
-        <span>Dupliquer</span>
-      </button>
-      <button type="button" class="btn btn--danger btn--block" @click="remove">
-        <i data-lucide="trash-2"></i>
-        <span>Supprimer</span>
-      </button>
-      {% endif %}
-    </div>
   </form>
 
-  {# Exercise picker modal #}
+  {# Bottom sticky bar actions #}
+  <div class="workout-finish-bar">
+    {% if routine_id %}
+    <button type="button" class="btn btn--ghost btn--icon" @click="remove" aria-label="Supprimer">
+      <i data-lucide="trash-2"></i>
+    </button>
+    <button type="button" class="btn btn--outline" @click="duplicate">
+      <i data-lucide="copy"></i>
+    </button>
+    {% endif %}
+    <button type="submit" form="routine-form" class="btn btn--primary flex-1">
+      <i data-lucide="check"></i>
+      <span>Enregistrer</span>
+    </button>
+  </div>
+
+  {# Exercise picker modal plein écran #}
   <template x-if="openPicker">
     <div class="modal-backdrop" @click.self="openPicker = false">
-      <div class="modal">
+      <div class="modal modal--full">
         <div class="modal__handle"></div>
         <div class="modal__header">
           <div class="modal__title">Choisir un exercice</div>
@@ -125,19 +134,34 @@
           <i data-lucide="search"></i>
           <input type="text" placeholder="Rechercher..." x-model="pickerQuery">
         </div>
-        <div class="ex-list" style="max-height: 50vh; overflow-y: auto;">
-          <template x-for="ex in filteredExercises" :key="ex.id">
-            <div class="ex-list__item" @click="addExercise(ex); openPicker = false">
-              <div class="ex-list__img"><i data-lucide="dumbbell"></i></div>
-              <div class="ex-list__body">
-                <div class="ex-list__name" x-text="ex.name"></div>
-                <div class="ex-list__meta">
-                  <span x-text="ex.muscleGroup"></span>
-                  <span x-text="'· ' + ex.equipment"></span>
+        <div class="ex-library-filters">
+          <button type="button" class="chip" :class="{ 'is-active': !pickerMuscle }" @click="pickerMuscle = null">Tous</button>
+          <template x-for="mg in muscleGroups" :key="mg">
+            <button type="button" class="chip" :class="{ 'is-active': pickerMuscle === mg }" @click="pickerMuscle = (pickerMuscle === mg ? null : mg)" x-text="mg"></button>
+          </template>
+        </div>
+        <div class="modal__body-scroll">
+          <div class="ex-list">
+            <template x-for="ex in filteredExercises" :key="ex.id">
+              <div class="ex-list__item" @click="addExercise(ex); openPicker = false">
+                <div class="ex-list__thumb">
+                  <template x-if="ex.cdn_video_url">
+                    <video :data-lazy-src="ex.cdn_video_url" muted playsinline loop preload="none"></video>
+                  </template>
+                  <template x-if="!ex.cdn_video_url">
+                    <div class="ex-list__thumb-fallback"><i data-lucide="dumbbell"></i></div>
+                  </template>
+                </div>
+                <div class="ex-list__body">
+                  <div class="ex-list__name" x-text="ex.name"></div>
+                  <div class="ex-list__meta">
+                    <span x-text="ex.muscleGroup"></span>
+                    <span x-text="'· ' + (ex.equipment || 'bodyweight')"></span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </template>
+            </template>
+          </div>
         </div>
       </div>
     </div>
@@ -147,7 +171,6 @@
 
 {% block scripts %}
 <script>
-  // Alpine component pour l'éditeur de routine
   document.addEventListener('alpine:init', () => {
     Alpine.data('routineEditor', (routine) => ({
       data: {
@@ -155,27 +178,15 @@
         title: routine.title || routine.name || '',
         folder_id: routine.folder_id || '',
         notes: routine.notes || '',
-        exercises: (routine.exercises || []).map(ex => ({
-          exerciseId: ex.exerciseId || ex.exercise_id,
-          name: ex.name,
-          muscleGroup: ex.muscleGroup || ex.muscle_group,
-          notes: ex.notes || '',
-          rest_seconds: ex.rest_seconds || 90,
-          sets: Array.isArray(ex.sets) ? ex.sets.map(s => ({
-            type: s.type || s.set_type || 'normal',
-            reps: s.target_reps ?? s.reps ?? null,
-            weight: s.target_weight ?? s.weight ?? null,
-            rpe: s.target_rpe ?? s.rpe ?? null
-          })) : []
-        }))
+        exercises: []
       },
       openPicker: false,
       pickerQuery: '',
+      pickerMuscle: null,
       exerciseLibrary: [],
 
       init() {
-        // Si routine existante (id), charger depuis API
-        if (this.data.id && !this.data.exercises.length) {
+        if (this.data.id) {
           fetch(`/api/routines/${this.data.id}`)
             .then(r => r.json())
             .then(d => {
@@ -187,6 +198,8 @@
                 exerciseId: ex.exerciseId || ex.exercise_id,
                 name: ex.name,
                 muscleGroup: ex.muscleGroup,
+                equipment: ex.equipment,
+                cdn_video_url: ex.cdn_video_url || null,
                 notes: ex.notes || '',
                 rest_seconds: ex.rest_seconds || 90,
                 sets: Array.isArray(ex.sets) ? ex.sets.map(s => ({
@@ -196,7 +209,10 @@
                   rpe: s.target_rpe
                 })) : []
               }));
-              this.$nextTick(() => window.lucide?.createIcons());
+              this.$nextTick(() => {
+                if (window.lucide) window.lucide.createIcons();
+                if (window.Hevy?.video) window.Hevy.video.scan(document);
+              });
             })
             .catch(() => {});
         }
@@ -206,10 +222,21 @@
           .catch(() => {});
       },
 
+      get muscleGroups() {
+        return [...new Set(this.exerciseLibrary.map(e => e.muscleGroup).filter(Boolean))].sort();
+      },
+
       get filteredExercises() {
         const q = this.pickerQuery.toLowerCase().trim();
-        if (!q) return this.exerciseLibrary;
-        return this.exerciseLibrary.filter(e => e.name.toLowerCase().includes(q));
+        return this.exerciseLibrary.filter(e => {
+          if (this.pickerMuscle && e.muscleGroup !== this.pickerMuscle) return false;
+          if (q && !e.name.toLowerCase().includes(q)) return false;
+          return true;
+        });
+      },
+
+      get totalSets() {
+        return this.data.exercises.reduce((s, ex) => s + (ex.sets?.length || 0), 0);
       },
 
       addExercise(ex) {
@@ -217,12 +244,18 @@
           exerciseId: ex.id,
           name: ex.name,
           muscleGroup: ex.muscleGroup,
+          equipment: ex.equipment,
+          cdn_video_url: ex.cdn_video_url || null,
           sets: [{ type: 'normal', reps: null, weight: null }]
         });
-        this.$nextTick(() => window.lucide?.createIcons());
+        this.$nextTick(() => {
+          if (window.lucide) window.lucide.createIcons();
+          if (window.Hevy?.video) window.Hevy.video.scan(document);
+        });
       },
 
       removeExercise(i) {
+        if (!confirm('Retirer cet exercice ?')) return;
         this.data.exercises.splice(i, 1);
       },
 
@@ -237,11 +270,8 @@
       },
 
       async save() {
-        const url = this.data.id
-          ? `/api/routines/${this.data.id}`
-          : '/api/routines';
+        const url = this.data.id ? `/api/routines/${this.data.id}` : '/api/routines';
         const method = this.data.id ? 'PATCH' : 'POST';
-        // Adapter les champs au format backend (snake_case)
         const payload = {
           name: this.data.title,
           notes: this.data.notes,
@@ -274,12 +304,8 @@
       },
 
       async duplicate() {
-        const copy = { ...this.data, id: null, title: this.data.title + ' (copie)' };
-        const res = await fetch('/api/routines', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(copy)
-        });
+        if (!this.data.id) return;
+        const res = await fetch(`/api/routines/${this.data.id}/duplicate`, { method: 'POST' });
         if (res.ok) window.location = '/routines';
       },
 

@@ -97,6 +97,8 @@ class Exercise(db.Model):
     )  # weight|reps|duration|distance
     instructions = db.Column(db.Text)
     image_url = db.Column(db.String(512))
+    cdn_video_id = db.Column(db.String(16), nullable=True)  # ID 8 chiffres Hevy CDN
+    cdn_video_slug = db.Column(db.String(255), nullable=True)  # Nom-With-Hyphens_Muscle
     is_custom = db.Column(db.Boolean, default=False, nullable=False)
     user_id = db.Column(
         db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=True
@@ -118,6 +120,24 @@ class Exercise(db.Model):
         Index("idx_exercise_custom_user", "is_custom", "user_id"),
     )
 
+    # Base URL du CDN vidéos Hevy public
+    CDN_BASE_URL = "https://d2l9nsnmtah87f.cloudfront.net/exercise-assets"
+
+    @property
+    def cdn_video_url(self) -> str | None:
+        """URL complète de la vidéo CDN si on a l'ID et le slug.
+
+        Format attendu : {BASE}/{ID8}-{Name-With-Hyphens}_{Muscle}.mp4
+        """
+        if not self.cdn_video_id or not self.cdn_video_slug:
+            return None
+        return f"{self.CDN_BASE_URL}/{self.cdn_video_id}-{self.cdn_video_slug}.mp4"
+
+    @property
+    def cdn_thumb_url(self) -> str | None:
+        """Thumbnail placeholder : on renvoie l'URL de la vidéo (le <video poster> extrait la 1re frame)."""
+        return self.cdn_video_url
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
@@ -127,6 +147,8 @@ class Exercise(db.Model):
             "exercise_type": self.exercise_type,
             "instructions": self.instructions,
             "image_url": self.image_url,
+            "cdn_video_id": self.cdn_video_id,
+            "cdn_video_url": self.cdn_video_url,
             "is_custom": self.is_custom,
             "user_id": self.user_id,
         }

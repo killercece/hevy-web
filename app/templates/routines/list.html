@@ -20,31 +20,47 @@
   </div>
 
   <div x-show="loading" class="stack">
-    <div class="skeleton" style="height:100px;"></div>
-    <div class="skeleton" style="height:100px;"></div>
+    <div class="skeleton" style="height:140px; border-radius: var(--radius-lg);"></div>
+    <div class="skeleton" style="height:140px; border-radius: var(--radius-lg);"></div>
   </div>
 
   <div x-show="!loading && filtered.length > 0" class="stack">
     <template x-for="r in filtered" :key="r.id">
-      <div class="card routine-card" @click="window.location = `/routines/${r.id}`">
-        <div class="routine-card__header">
-          <div class="flex-1">
-            <div class="routine-card__title" x-text="r.title || r.name"></div>
-            <div class="routine-card__meta" x-text="(r.exercises?.length || 0) + ' exercices · ' + (r.total_sets || 0) + ' sets'"></div>
+      <div class="routine-card-v2" @click="window.location = `/routines/${r.id}`" style="cursor:pointer;">
+        <template x-if="previewVideos(r).length > 0">
+          <div class="routine-card-v2__previews">
+            <template x-for="(v, i) in previewVideos(r).slice(0,3)" :key="i">
+              <div class="routine-card-v2__preview">
+                <video :data-lazy-src="v" muted playsinline loop preload="none"></video>
+              </div>
+            </template>
+            <template x-for="i in (3 - previewVideos(r).length)" :key="'e'+i" x-if="previewVideos(r).length < 3">
+              <div class="routine-card-v2__preview routine-card-v2__preview-empty">
+                <i data-lucide="dumbbell"></i>
+              </div>
+            </template>
           </div>
-          <span class="badge badge--accent" x-text="(r.total_sets || 0) + ' sets'"></span>
-        </div>
-        <div class="routine-card__exercises" x-show="r.exercises?.length > 0"
-             x-text="(r.exercises || []).slice(0,4).map(e => e.name).join(' · ') + ((r.exercises || []).length > 4 ? ' · +' + ((r.exercises.length) - 4) : '')">
-        </div>
-        <div class="routine-card__actions" @click.stop>
-          <a :href="`/workout/start?routine_id=${r.id}`" class="btn btn--primary btn--sm flex-1">
-            <i data-lucide="play"></i>
-            <span>Start</span>
-          </a>
-          <a :href="`/routines/${r.id}/edit`" class="btn btn--outline btn--sm btn--icon" aria-label="Éditer">
-            <i data-lucide="edit-3"></i>
-          </a>
+        </template>
+        <div class="routine-card-v2__body">
+          <div class="row row--between" style="align-items: flex-start;">
+            <div class="flex-1" style="min-width: 0;">
+              <div class="routine-card-v2__title" x-text="r.title || r.name"></div>
+              <div class="routine-card-v2__meta" x-text="(r.exercises?.length || 0) + ' exercices'"></div>
+            </div>
+            <span class="badge badge--accent" x-text="(r.total_sets || 0) + ' sets'"></span>
+          </div>
+          <div class="text-sm text-tertiary mt-2 truncate" x-show="r.exercises?.length > 0"
+               x-text="(r.exercises || []).slice(0,4).map(e => e.name).join(' · ') + ((r.exercises || []).length > 4 ? ' · +' + ((r.exercises.length) - 4) : '')">
+          </div>
+          <div class="row gap-2 mt-3" @click.stop>
+            <a :href="`/workout/start?routine_id=${r.id}`" class="btn btn--primary btn--sm flex-1">
+              <i data-lucide="play"></i>
+              <span>Start</span>
+            </a>
+            <a :href="`/routines/${r.id}/edit`" class="btn btn--outline btn--sm btn--icon" aria-label="Éditer">
+              <i data-lucide="edit-3"></i>
+            </a>
+          </div>
         </div>
       </div>
     </template>
@@ -77,7 +93,16 @@
           this.items = d.routines || d.items || [];
         } catch(e) {}
         this.loading = false;
-        this.$nextTick(() => window.lucide?.createIcons());
+        this.$nextTick(() => {
+          if (window.lucide) window.lucide.createIcons();
+          if (window.Hevy?.video) window.Hevy.video.scan(document);
+        });
+      },
+
+      previewVideos(r) {
+        return (r.exercises || [])
+          .map(e => e.cdn_video_url)
+          .filter(Boolean);
       },
 
       get filtered() {

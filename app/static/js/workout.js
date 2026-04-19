@@ -35,6 +35,7 @@ document.addEventListener('alpine:init', () => {
     // Rest timer
     restActive: false,
     restRemaining: 0,
+    restTotal: 90,
     restDisplay: '00:00',
     restInterval: null,
     restDefault: 90,
@@ -68,7 +69,10 @@ document.addEventListener('alpine:init', () => {
       // Autosave
       setInterval(() => this.persist(), 5000);
 
-      this.$nextTick(() => window.lucide?.createIcons());
+      this.$nextTick(() => {
+        if (window.lucide) window.lucide.createIcons();
+        if (window.Hevy?.video) window.Hevy.video.scan(document);
+      });
     },
 
     tick() {
@@ -115,12 +119,16 @@ document.addEventListener('alpine:init', () => {
         name: ex.name,
         muscleGroup: ex.muscleGroup,
         equipment: ex.equipment,
+        cdn_video_url: ex.cdn_video_url || null,
         notes: '',
         sets: [{ type: 'normal', weight: null, reps: null, completed: false, previous: null }]
       });
       this.loadPreviousForLast();
       this.persist();
-      this.$nextTick(() => window.lucide?.createIcons());
+      this.$nextTick(() => {
+        if (window.lucide) window.lucide.createIcons();
+        if (window.Hevy?.video) window.Hevy.video.scan(document);
+      });
     },
 
     loadPreviousForLast() {
@@ -192,7 +200,8 @@ document.addEventListener('alpine:init', () => {
     },
 
     startRest() {
-      this.restRemaining = this.restDefault;
+      this.restTotal = this.restDefault || 90;
+      this.restRemaining = this.restTotal;
       this.restActive = true;
       this.restDisplay = Hevy.format.duration(this.restRemaining);
       clearInterval(this.restInterval);
@@ -207,6 +216,7 @@ document.addEventListener('alpine:init', () => {
 
     adjustRest(delta) {
       this.restRemaining = Math.max(5, this.restRemaining + delta);
+      this.restTotal = Math.max(this.restTotal, this.restRemaining);
       this.restDisplay = Hevy.format.duration(this.restRemaining);
     },
 
@@ -217,11 +227,18 @@ document.addEventListener('alpine:init', () => {
 
     finishRest() {
       clearInterval(this.restInterval);
-      Hevy.haptics.success();
+      Hevy.haptics.long();
+      // Tente audio file puis fallback AudioContext
       try {
         const chime = document.getElementById('rest-chime');
-        if (chime) chime.play().catch(() => {});
-      } catch (e) {}
+        if (chime && chime.src) {
+          chime.play().catch(() => window.Hevy?.sound?.chime());
+        } else {
+          window.Hevy?.sound?.chime();
+        }
+      } catch (e) {
+        window.Hevy?.sound?.chime();
+      }
       setTimeout(() => { this.restActive = false; }, 800);
     },
 

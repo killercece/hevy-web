@@ -1,0 +1,673 @@
+/* hevy.css — composants spécifiques à la refonte qualité Hevy-like */
+
+/* --------------------------------------------------------------------
+ * Tokens étendus
+ * -------------------------------------------------------------------- */
+:root {
+  --bg-overlay: rgba(0, 0, 0, 0.55);
+  --bg-overlay-strong: rgba(0, 0, 0, 0.82);
+  --bg-video: #0A0A0A;
+
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+
+  --radius-2xl: 28px;
+
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+                 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-press: 0 6px 20px rgba(38, 127, 232, 0.35);
+
+  /* Couleurs types de sets (alignées app) */
+  --set-warmup: #F5A524;
+  --set-drop:   #60A5FA;
+  --set-failure:#F87171;
+}
+
+/* --------------------------------------------------------------------
+ * Micro-interactions globales
+ * -------------------------------------------------------------------- */
+.card,
+.ex-card,
+.routine-card,
+.workout-card {
+  transition: transform 160ms ease, border-color 160ms ease,
+              box-shadow 160ms ease;
+}
+.card--clickable:hover,
+.ex-card:hover,
+.routine-card:hover,
+.workout-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+
+button, .btn, .chip, .checkbox {
+  -webkit-tap-highlight-color: transparent;
+}
+.btn--primary:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Animation pulse pour chip actif */
+.chip.is-active {
+  animation: chipPop 200ms ease;
+  box-shadow: 0 0 0 3px rgba(38, 127, 232, 0.15);
+}
+@keyframes chipPop {
+  0%   { transform: scale(0.95); }
+  60%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* --------------------------------------------------------------------
+ * ExerciseCard — carte avec vidéo en fond
+ * -------------------------------------------------------------------- */
+.ex-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+@media (min-width: 560px) { .ex-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 880px) { .ex-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1200px){ .ex-grid { grid-template-columns: repeat(5, 1fr); } }
+
+.ex-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-video);
+  color: var(--text-primary);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  isolation: isolate;
+}
+
+.ex-card__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.ex-card__video,
+.ex-card__placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #0a0a0a;
+  display: block;
+}
+
+.ex-card__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(38,127,232,0.15), transparent 60%),
+    var(--bg-tertiary);
+}
+.ex-card__placeholder svg { width: 40%; height: 40%; opacity: 0.55; }
+
+.ex-card__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(to top,
+      rgba(0,0,0,0.88) 0%,
+      rgba(0,0,0,0.35) 45%,
+      rgba(0,0,0,0.08) 70%,
+      rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+
+.ex-card__body {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 2;
+  padding: var(--space-3);
+}
+
+.ex-card__name {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+.ex-card__meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.ex-card__meta span + span::before {
+  content: "·";
+  margin-right: 6px;
+  opacity: 0.5;
+}
+
+.ex-card__badge {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 2;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  color: #fff;
+}
+
+.ex-card:hover .ex-card__body { transform: translateY(-2px); }
+.ex-card:hover { border-color: var(--border-strong); }
+.ex-card:active { transform: scale(0.99); }
+
+/* Variant list row avec vidéo thumbnail */
+.ex-list__thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+  position: relative;
+}
+.ex-list__thumb video,
+.ex-list__thumb .ex-list__thumb-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ex-list__thumb-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+.ex-list__thumb-fallback svg { width: 26px; height: 26px; }
+
+/* --------------------------------------------------------------------
+ * Exercise detail — header video
+ * -------------------------------------------------------------------- */
+.ex-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  background: var(--bg-video);
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  overflow: hidden;
+  margin: calc(-1 * var(--space-4)) 0 var(--space-4);
+}
+.ex-hero__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ex-hero__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top,
+    rgba(0,0,0,0.75) 0%,
+    rgba(0,0,0,0.15) 50%,
+    rgba(0,0,0,0) 100%);
+}
+.ex-hero__body {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: var(--space-4);
+}
+.ex-hero__title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.ex-hero__meta {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------
+ * Hero CTA amélioré (dashboard)
+ * -------------------------------------------------------------------- */
+.hero-cta--xl {
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,0.2), transparent 55%),
+    linear-gradient(135deg, var(--accent) 0%, #1a6dd0 55%, #0e4a94 100%);
+  position: relative;
+  overflow: hidden;
+}
+.hero-cta--xl::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(80% 120% at 100% 100%,
+      rgba(255,255,255,0.1), transparent 60%);
+  pointer-events: none;
+}
+.hero-cta--xl .hero-cta__content h3 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.hero-cta--xl .hero-cta__icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(4px);
+}
+
+/* Hero-cta button row sous hero */
+.hero-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: calc(-1 * var(--space-4));
+  margin-bottom: var(--space-4);
+  position: relative;
+  z-index: 2;
+}
+.hero-actions .btn {
+  padding: 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow);
+}
+
+/* --------------------------------------------------------------------
+ * Stats row redesign
+ * -------------------------------------------------------------------- */
+.stats-row--rich {
+  gap: var(--space-3);
+}
+.stats-row--rich .stat {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-3);
+  border: 1px solid var(--divider);
+  position: relative;
+  overflow: hidden;
+}
+.stats-row--rich .stat__icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--text-tertiary);
+  opacity: 0.55;
+}
+.stats-row--rich .stat__icon svg { width: 18px; height: 18px; }
+.stats-row--rich .stat__value {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* --------------------------------------------------------------------
+ * Routine card avec mini previews vidéo
+ * -------------------------------------------------------------------- */
+.routine-card-v2 {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--divider);
+}
+.routine-card-v2__previews {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  aspect-ratio: 3 / 1;
+  background: var(--bg-primary);
+}
+.routine-card-v2__preview {
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  position: relative;
+}
+.routine-card-v2__preview video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.routine-card-v2__preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+.routine-card-v2__body {
+  padding: var(--space-3) var(--space-4);
+}
+.routine-card-v2__title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+.routine-card-v2__meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------------------
+ * Workout actif — améliorations
+ * -------------------------------------------------------------------- */
+.workout-timer--sticky {
+  backdrop-filter: blur(12px);
+  background: rgba(14, 14, 14, 0.88);
+}
+
+.ex-block {
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--divider);
+}
+.ex-block__thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+  position: relative;
+}
+.ex-block__thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ex-block__thumb-fallback {
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+/* Checkbox custom plus grosse et satisfaisante */
+.checkbox {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border-width: 2px;
+}
+.checkbox.is-checked {
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
+  animation: checkPop 240ms ease;
+}
+@keyframes checkPop {
+  0%   { transform: scale(0.8); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* Set row améliorée */
+.set-row {
+  grid-template-columns: 42px 1fr 78px 78px 46px;
+  padding: 10px 4px;
+  transition: background 120ms ease;
+}
+.set-row.is-completed {
+  background: linear-gradient(90deg,
+    rgba(34, 197, 94, 0.12) 0%,
+    rgba(34, 197, 94, 0.04) 100%);
+}
+.set-row__input {
+  font-size: 16px;
+  min-height: 44px;
+}
+.set-row__input:focus {
+  box-shadow: 0 0 0 3px rgba(38, 127, 232, 0.2);
+}
+
+.set-row__num.is-warmup   { color: var(--set-warmup);  background: rgba(245, 165, 36, 0.15); }
+.set-row__num.is-drop     { color: var(--set-drop);    background: rgba(96, 165, 250, 0.15); }
+.set-row__num.is-failure  { color: var(--set-failure); background: rgba(248, 113, 113, 0.15); }
+
+/* Finish bar plus prononcée */
+.workout-finish-bar {
+  backdrop-filter: blur(12px);
+  background: rgba(14, 14, 14, 0.88);
+}
+.workout-finish-bar .btn--primary {
+  box-shadow: var(--shadow-press);
+  font-size: 16px;
+}
+
+/* Rest timer circulaire */
+.rest-timer--circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rest-circle {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin: var(--space-4) auto;
+}
+.rest-circle svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.rest-circle__track {
+  fill: none;
+  stroke: var(--bg-tertiary);
+  stroke-width: 10;
+}
+.rest-circle__progress {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+.rest-circle__time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.rest-circle__time .clock {
+  font-size: 52px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.rest-circle__time .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+/* --------------------------------------------------------------------
+ * History timeline
+ * -------------------------------------------------------------------- */
+.history-date-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 var(--space-3);
+  padding: 0 var(--space-1);
+}
+.history-date-head__line {
+  flex: 1;
+  height: 1px;
+  background: var(--divider);
+}
+.history-date-head__label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+}
+
+.history-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--divider);
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+.history-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+.history-card__title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.history-card__subtitle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+.history-card__stats {
+  display: flex;
+  gap: var(--space-4);
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--divider);
+  margin-bottom: var(--space-3);
+}
+.history-card__stats strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.history-card__ex-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 6px 0;
+  font-size: 13px;
+}
+.history-card__ex-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+}
+.history-card__ex-thumb video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.history-card__ex-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-card__ex-sets {
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------
+ * Modal picker plein écran
+ * -------------------------------------------------------------------- */
+.modal--full {
+  max-width: 520px;
+  max-height: 92vh;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+@media (min-width: 640px) {
+  .modal--full {
+    max-height: 85vh;
+    border-radius: var(--radius-xl);
+  }
+}
+.modal__body-scroll {
+  max-height: 65vh;
+  overflow-y: auto;
+  margin: 0 calc(-1 * var(--space-4));
+  padding: 0 var(--space-4);
+}
+
+/* --------------------------------------------------------------------
+ * Skeletons enrichis
+ * -------------------------------------------------------------------- */
+.skel-card {
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-lg);
+}
+.skel-line {
+  height: 14px;
+  border-radius: 6px;
+}
+
+/* --------------------------------------------------------------------
+ * Bottom nav — touche polish
+ * -------------------------------------------------------------------- */
+.bottom-nav {
+  backdrop-filter: blur(12px);
+  background: rgba(26, 26, 26, 0.92);
+}
+.bottom-nav__item.is-active svg {
+  filter: drop-shadow(0 0 8px rgba(38,127,232,0.5));
+}
+
+/* --------------------------------------------------------------------
+ * Utilitaires complémentaires
+ * -------------------------------------------------------------------- */
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.px-4 { padding-left: var(--space-4); padding-right: var(--space-4); }
+.py-2 { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.py-3 { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.py-4 { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+
+/* Icon-on-dark transitions */
+[data-lucide] { transition: transform 150ms ease, color 150ms ease; }
+
+/* --------------------------------------------------------------------
+ * Respect du mouvement réduit
+ * -------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .ex-card__video { display: none; }
+}

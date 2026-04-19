@@ -78,6 +78,10 @@ def create_app(config_class=None) -> Flask:
         except (OperationalError, IntegrityError):
             db.session.rollback()
         try:
+            _apply_light_migrations(app)
+        except (OperationalError, IntegrityError):
+            db.session.rollback()
+        try:
             _bootstrap_initial_data(app)
         except (OperationalError, IntegrityError):
             db.session.rollback()
@@ -88,10 +92,38 @@ def create_app(config_class=None) -> Flask:
     return app
 
 
+def _apply_light_migrations(app: Flask) -> None:
+    """Migrations SQLite légères en runtime (idempotent).
+
+    On ajoute les colonnes absentes via ALTER TABLE. Permet d'évoluer le
+    schéma sans Alembic pour les simples ajouts.
+    """
+    from sqlalchemy import inspect, text
+
+    insp = inspect(db.engine)
+    if "exercise" not in insp.get_table_names():
+        return
+
+    existing = {c["name"] for c in insp.get_columns("exercise")}
+    to_add: list[tuple[str, str]] = []
+    if "cdn_video_id" not in existing:
+        to_add.append(("cdn_video_id", "VARCHAR(16)"))
+    if "cdn_video_slug" not in existing:
+        to_add.append(("cdn_video_slug", "VARCHAR(255)"))
+
+    for col, ddl in to_add:
+        try:
+            with db.engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE exercise ADD COLUMN {col} {ddl}"))
+            app.logger.info("Colonne %s ajoutée à exercise.", col)
+        except Exception as exc:  # noqa: BLE001
+            app.logger.warning("Migration exercise.%s: %s", col, exc)
+
+
 def _bootstrap_initial_data(app: Flask) -> None:
-    """Seed initial : user admin + bibliothèque d'exercices."""
+    """Seed initial : user admin + bibliothèque d'exercices (idempotent)."""
     from .models import Exercise, User
-    from .utils.seed_exercises import seed_exercises
+    from .utils.seed_exercises import seed_exercises, sync_cdn_videos
 
     # User admin par défaut si aucun utilisateur
     if not db.session.query(User).first():
@@ -108,10 +140,18 @@ def _bootstrap_initial_data(app: Flask) -> None:
             app.config["ADMIN_PASSWORD"],
         )
 
-    # Seed exercices si table vide
+    # Seed exercices si table vide, sinon sync des vidéos CDN
     if not db.session.query(Exercise).first():
-        seed_exercises(db.session)
-        app.logger.info("Bibliothèque d'exercices seedée.")
+        inserted = seed_exercises(db.session)
+        app.logger.info("Bibliothèque seedée : %d exercices.", inserted)
+    else:
+        updated, added = sync_cdn_videos(db.session)
+        if updated or added:
+            app.logger.info(
+                "Sync CDN : %d vidéos attachées, %d nouveaux exercices.",
+                updated,
+                added,
+            )
 
 
 def _register_error_handlers(app: Flask) -> None:

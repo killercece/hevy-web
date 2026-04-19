@@ -1,5 +1,5 @@
 /**
- * Bibliothèque d'exercices - recherche + filtres
+ * Bibliothèque d'exercices - recherche + filtres + lazy videos.
  */
 
 document.addEventListener('alpine:init', () => {
@@ -8,7 +8,19 @@ document.addEventListener('alpine:init', () => {
     query: '',
     muscleFilter: null,
     equipmentFilter: null,
+    viewMode: localStorage.getItem('hevy.exlib.view') || 'grid',
     loading: true,
+
+    init() {
+      // Persiste le choix de vue
+      this.$watch('viewMode', (v) => {
+        try { localStorage.setItem('hevy.exlib.view', v); } catch (e) {}
+        this._rescan();
+      });
+      this.$watch('muscleFilter', () => this._rescan());
+      this.$watch('equipmentFilter', () => this._rescan());
+      this.$watch('query', () => this._rescan());
+    },
 
     async load() {
       try {
@@ -19,7 +31,16 @@ document.addEventListener('alpine:init', () => {
         this.items = [];
       }
       this.loading = false;
-      this.$nextTick(() => window.lucide?.createIcons());
+      this.$nextTick(() => {
+        if (window.lucide) window.lucide.createIcons();
+        this._rescan();
+      });
+    },
+
+    _rescan() {
+      this.$nextTick(() => {
+        if (window.Hevy?.video) window.Hevy.video.scan(document);
+      });
     },
 
     get muscleGroups() {

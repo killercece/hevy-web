@@ -203,6 +203,7 @@ def import_data():
 
 def _exercise_hevy_format(e: Exercise) -> dict:
     """Format camelCase pour le Frontend (compat conventions Hevy)."""
+    video_url = e.cdn_video_url
     return {
         "id": e.id,
         "name": e.name,
@@ -214,6 +215,10 @@ def _exercise_hevy_format(e: Exercise) -> dict:
         "instructions": e.instructions,
         "imageUrl": e.image_url,
         "image_url": e.image_url,
+        "cdn_video_id": e.cdn_video_id,
+        "cdn_video_url": video_url,
+        "cdnVideoUrl": video_url,
+        "videoUrl": video_url,
         "isCustom": e.is_custom,
         "is_custom": e.is_custom,
         "user_id": e.user_id,
@@ -477,6 +482,9 @@ def _routine_hevy_format(r: Routine, include_sets: bool = True) -> dict:
                 "name": re.exercise.name if re.exercise else "?",
                 "muscleGroup": re.exercise.muscle_group if re.exercise else None,
                 "equipment": re.exercise.equipment if re.exercise else None,
+                "cdn_video_url": (
+                    re.exercise.cdn_video_url if re.exercise else None
+                ),
                 "order_index": re.order_index,
                 "notes": re.notes,
                 "rest_seconds": re.rest_seconds,
@@ -782,6 +790,9 @@ def _workout_hevy_format(w: Workout) -> dict:
                 "exerciseId": we.exercise_id,
                 "name": we.exercise.name if we.exercise else "?",
                 "muscleGroup": we.exercise.muscle_group if we.exercise else None,
+                "cdn_video_url": (
+                    we.exercise.cdn_video_url if we.exercise else None
+                ),
                 "sets": sets_data,
             }
         )

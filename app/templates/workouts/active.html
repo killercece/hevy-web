@@ -5,8 +5,8 @@
 {% block content %}
 <div x-data="activeWorkout({{ initial|tojson|safe if initial else '{}' }})" x-init="start()">
 
-  {# Timer bar sticky #}
-  <div class="workout-timer">
+  {# Timer bar sticky avec blur #}
+  <div class="workout-timer workout-timer--sticky">
     <div class="workout-timer__clock">
       <i data-lucide="clock"></i>
       <span x-text="elapsedDisplay">00:00</span>
@@ -33,10 +33,17 @@
     <template x-for="(ex, exIndex) in data.exercises" :key="exIndex">
       <div class="ex-block">
         <div class="ex-block__header">
-          <div class="ex-block__icon"><i data-lucide="dumbbell"></i></div>
-          <div class="flex-1">
+          <div class="ex-block__thumb">
+            <template x-if="ex.cdn_video_url">
+              <video :data-lazy-src="ex.cdn_video_url" muted playsinline loop preload="none"></video>
+            </template>
+            <template x-if="!ex.cdn_video_url">
+              <div class="ex-block__thumb-fallback"><i data-lucide="dumbbell"></i></div>
+            </template>
+          </div>
+          <div class="flex-1" style="min-width: 0;">
             <div class="ex-block__name" x-text="ex.name"></div>
-            <div class="ex-block__muscle" x-text="ex.muscleGroup"></div>
+            <div class="ex-block__muscle" x-text="ex.muscleGroup + (ex.equipment ? ' · ' + ex.equipment : '')"></div>
           </div>
           <button type="button" class="btn btn--icon btn--ghost btn--sm" @click="removeExercise(exIndex)" aria-label="Retirer">
             <i data-lucide="more-vertical"></i>
@@ -46,10 +53,10 @@
         <input type="text" class="ex-block__notes" x-model="ex.notes" placeholder="Notes exercice...">
 
         <div class="set-row__header">
-          <span>#</span>
-          <span>Précédent</span>
-          <span x-text="unit">Kg</span>
-          <span>Reps</span>
+          <span>SET</span>
+          <span>PRÉC.</span>
+          <span x-text="unit.toUpperCase()">KG</span>
+          <span>REPS</span>
           <span></span>
         </div>
 
@@ -61,8 +68,14 @@
                  'is-drop': s.type === 'drop',
                  'is-failure': s.type === 'failure'
                }">
-            <button type="button" class="set-row__num" @click="cycleSetType(exIndex, sIndex)" :aria-label="'Type ' + s.type">
-              <span x-show="s.type === 'normal'" x-text="sIndex + 1"></span>
+            <button type="button" class="set-row__num"
+                    :class="{
+                      'is-warmup': s.type === 'warmup',
+                      'is-drop': s.type === 'drop',
+                      'is-failure': s.type === 'failure'
+                    }"
+                    @click="cycleSetType(exIndex, sIndex)" :aria-label="'Type ' + s.type">
+              <span x-show="s.type === 'normal' || !s.type" x-text="sIndex + 1"></span>
               <span x-show="s.type === 'warmup'">W</span>
               <span x-show="s.type === 'drop'">D</span>
               <span x-show="s.type === 'failure'">F</span>
@@ -105,14 +118,26 @@
     </button>
   </div>
 
-  {# Rest timer modal #}
+  {# Rest timer modal circulaire #}
   <template x-if="restActive">
     <div class="modal-backdrop" @click.self="stopRest">
       <div class="modal">
         <div class="modal__handle"></div>
-        <div class="rest-timer">
+        <div class="rest-timer rest-timer--circle">
           <div class="rest-timer__label">Repos</div>
-          <div class="rest-timer__clock" x-text="restDisplay">01:30</div>
+          <div class="rest-circle">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="rest-circle__track" cx="60" cy="60" r="54"></circle>
+              <circle class="rest-circle__progress" cx="60" cy="60" r="54"
+                      pathLength="100"
+                      :stroke-dasharray="100"
+                      :stroke-dashoffset="100 - (restRemaining / restTotal * 100)"></circle>
+            </svg>
+            <div class="rest-circle__time">
+              <span class="clock" x-text="restDisplay">01:30</span>
+              <span class="label">restant</span>
+            </div>
+          </div>
           <div class="rest-timer__actions">
             <button type="button" class="btn btn--outline" @click="adjustRest(-15)">-15s</button>
             <button type="button" class="btn btn--outline" @click="adjustRest(15)">+15s</button>
@@ -123,10 +148,10 @@
     </div>
   </template>
 
-  {# Exercise picker modal #}
+  {# Exercise picker modal plein écran #}
   <template x-if="openPicker">
     <div class="modal-backdrop" @click.self="openPicker = false">
-      <div class="modal">
+      <div class="modal modal--full">
         <div class="modal__handle"></div>
         <div class="modal__header">
           <div class="modal__title">Choisir un exercice</div>
@@ -137,23 +162,33 @@
           <input type="text" placeholder="Rechercher..." x-model="pickerQuery">
         </div>
         <div class="ex-library-filters">
+          <button type="button" class="chip" :class="{ 'is-active': !pickerMuscle }" @click="pickerMuscle = null">Tous</button>
           <template x-for="mg in muscleGroups" :key="mg">
             <button type="button" class="chip" :class="{ 'is-active': pickerMuscle === mg }" @click="pickerMuscle = (pickerMuscle === mg ? null : mg)" x-text="mg"></button>
           </template>
         </div>
-        <div class="ex-list" style="max-height: 50vh; overflow-y: auto;">
-          <template x-for="ex in filteredExercises" :key="ex.id">
-            <div class="ex-list__item" @click="addExercise(ex); openPicker = false">
-              <div class="ex-list__img"><i data-lucide="dumbbell"></i></div>
-              <div class="ex-list__body">
-                <div class="ex-list__name" x-text="ex.name"></div>
-                <div class="ex-list__meta">
-                  <span x-text="ex.muscleGroup"></span>
-                  <span x-text="'· ' + ex.equipment"></span>
+        <div class="modal__body-scroll">
+          <div class="ex-list">
+            <template x-for="ex in filteredExercises" :key="ex.id">
+              <div class="ex-list__item" @click="addExercise(ex); openPicker = false">
+                <div class="ex-list__thumb">
+                  <template x-if="ex.cdn_video_url">
+                    <video :data-lazy-src="ex.cdn_video_url" muted playsinline loop preload="none"></video>
+                  </template>
+                  <template x-if="!ex.cdn_video_url">
+                    <div class="ex-list__thumb-fallback"><i data-lucide="dumbbell"></i></div>
+                  </template>
+                </div>
+                <div class="ex-list__body">
+                  <div class="ex-list__name" x-text="ex.name"></div>
+                  <div class="ex-list__meta">
+                    <span x-text="ex.muscleGroup"></span>
+                    <span x-text="'· ' + (ex.equipment || 'bodyweight')"></span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </template>
+            </template>
+          </div>
         </div>
       </div>
     </div>

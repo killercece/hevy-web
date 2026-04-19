@@ -107,7 +107,100 @@ Hevy.haptics = {
   },
 
   success() { this.vibrate([30, 30, 30]); },
-  tick() { this.vibrate(20); }
+  tick() { this.vibrate(20); },
+  long() { this.vibrate([120, 60, 120]); }
+};
+
+/* --------------------------------------------------------------
+ * Lazy Video Loader
+ *
+ * Scanne la page pour les <video data-lazy-src="..."> et les charge
+ * uniquement quand ils entrent dans le viewport via IntersectionObserver.
+ * Permet d'afficher des centaines de vidéos sans les télécharger toutes.
+ * -------------------------------------------------------------- */
+Hevy.video = {
+  _observer: null,
+
+  _ensureObserver() {
+    if (this._observer || !('IntersectionObserver' in window)) return this._observer;
+    this._observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const v = entry.target;
+        if (entry.isIntersecting) {
+          // Load + play
+          const src = v.getAttribute('data-lazy-src');
+          if (src && !v.src) {
+            v.src = src;
+            v.load();
+          }
+          const p = v.play();
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+        } else if (!v.paused) {
+          try { v.pause(); } catch (e) {}
+        }
+      }
+    }, { rootMargin: '150px 0px', threshold: 0.1 });
+    return this._observer;
+  },
+
+  scan(root = document) {
+    const obs = this._ensureObserver();
+    const videos = root.querySelectorAll('video[data-lazy-src]:not([data-lazy-bound])');
+    videos.forEach(v => {
+      v.setAttribute('data-lazy-bound', '1');
+      v.muted = true;
+      v.playsInline = true;
+      v.loop = true;
+      v.setAttribute('preload', 'none');
+      if (obs) {
+        obs.observe(v);
+      } else {
+        // Fallback: charge direct
+        v.src = v.getAttribute('data-lazy-src');
+      }
+    });
+  }
+};
+
+/* --------------------------------------------------------------
+ * Sound (AudioContext beep)
+ *
+ * Génère un petit son de fin de timer sans fichier audio.
+ * -------------------------------------------------------------- */
+Hevy.sound = {
+  _ctx: null,
+
+  _ensureCtx() {
+    if (this._ctx) return this._ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try {
+      this._ctx = new AC();
+    } catch (e) { return null; }
+    return this._ctx;
+  },
+
+  beep(frequency = 880, duration = 0.18, volume = 0.25) {
+    const ctx = this._ensureCtx();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = frequency;
+    gain.gain.value = volume;
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration);
+  },
+
+  chime() {
+    // Deux tonalités — plus agréable qu'un simple bip
+    this.beep(880, 0.18, 0.22);
+    setTimeout(() => this.beep(1175, 0.25, 0.22), 180);
+  }
 };
 
 // HTMX headers
@@ -115,11 +208,30 @@ document.addEventListener('htmx:configRequest', (evt) => {
   evt.detail.headers['Accept'] = 'application/json';
 });
 
-// Init : icônes Lucide
-document.addEventListener('DOMContentLoaded', () => {
-  if (window.lucide) window.lucide.createIcons();
-});
+// Init : icônes Lucide + lazy videos
+function hevyInitAll(root) {
+  if (window.lucide) window.lucide.createIcons({ nameAttr: 'data-lucide' });
+  if (Hevy.video) Hevy.video.scan(root || document);
+}
 
-document.addEventListener('htmx:afterSettle', () => {
-  if (window.lucide) window.lucide.createIcons();
-});
+document.addEventListener('DOMContentLoaded', () => hevyInitAll());
+document.addEventListener('htmx:afterSettle', (e) => hevyInitAll(e.target || document));
+
+// Alpine peut remplacer le DOM : rebind après chaque mutation
+if (window.MutationObserver) {
+  const mo = new MutationObserver((muts) => {
+    let needScan = false;
+    for (const m of muts) {
+      for (const n of m.addedNodes) {
+        if (n.nodeType === 1 && (n.matches?.('video[data-lazy-src]') || n.querySelector?.('video[data-lazy-src]'))) {
+          needScan = true; break;
+        }
+      }
+      if (needScan) break;
+    }
+    if (needScan) hevyInitAll(document);
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    mo.observe(document.body, { childList: true, subtree: true });
+  });
+}

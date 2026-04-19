@@ -1,7 +1,7 @@
-{# Carte workout feed — attend une variable `workout` #}
-<a href="{{ url_for('main.workout_detail', workout_id=workout.id) }}" class="workout-card" style="display: block; color: inherit;">
-  <div class="workout-card__header">
-    <span class="workout-card__date">{{ workout.date_relative }}</span>
+{# Carte workout feed — avec mini-thumbnails vidéo des exercices #}
+<a href="{{ url_for('main.workout_detail', workout_id=workout.id) }}" class="history-card" style="display: block; color: inherit;">
+  <div class="row row--between" style="margin-bottom: var(--space-2);">
+    <span class="history-card__subtitle" style="margin-bottom: 0;">{{ workout.date_relative }}</span>
     {% if workout.pr_count %}
     <span class="badge badge--pr">
       <i data-lucide="trophy" style="width:10px;height:10px;"></i>
@@ -10,35 +10,31 @@
     {% endif %}
   </div>
 
-  <div class="workout-card__title">{{ workout.title|default('Workout') }}</div>
+  <div class="history-card__title">{{ workout.title|default('Workout') }}</div>
 
-  <div class="workout-card__stats">
-    <span class="workout-card__stat">
-      <i data-lucide="clock"></i>
-      {{ workout.duration_display|default('—') }}
-    </span>
-    <span class="workout-card__stat">
-      <i data-lucide="weight"></i>
-      {{ workout.volume_display|default('—') }}
-    </span>
-    <span class="workout-card__stat">
-      <i data-lucide="list-checks"></i>
-      {{ workout.total_sets|default(0) }} sets
-    </span>
+  <div class="history-card__stats">
+    <span><i data-lucide="clock" style="width:14px;height:14px;vertical-align:-2px;"></i> <strong>{{ workout.duration_display|default('—') }}</strong></span>
+    <span><i data-lucide="weight" style="width:14px;height:14px;vertical-align:-2px;"></i> <strong>{{ workout.volume_display|default('—') }}</strong></span>
+    <span><i data-lucide="list-checks" style="width:14px;height:14px;vertical-align:-2px;"></i> <strong>{{ workout.total_sets|default(0) }}</strong> sets</span>
   </div>
 
   {% if workout.exercise_summary %}
-  <div class="workout-card__ex-list">
+  <div>
     {% for ex in workout.exercise_summary[:5] %}
-    <div class="workout-card__ex-line">
-      <span><strong>{{ ex.sets_count }}×</strong> {{ ex.name }}</span>
-      <span>{{ ex.best_display }}</span>
+    <div class="history-card__ex-row">
+      <div class="history-card__ex-thumb">
+        {% if ex.cdn_video_url %}
+        <video data-lazy-src="{{ ex.cdn_video_url }}" muted playsinline loop preload="none"></video>
+        {% else %}
+        <div class="ex-list__thumb-fallback"><i data-lucide="dumbbell"></i></div>
+        {% endif %}
+      </div>
+      <div class="history-card__ex-name"><strong>{{ ex.sets_count }}×</strong> {{ ex.name }}</div>
+      <div class="history-card__ex-sets">{{ ex.best_display }}</div>
     </div>
     {% endfor %}
     {% if workout.exercise_summary|length > 5 %}
-    <div class="workout-card__ex-line">
-      <span class="text-tertiary">+ {{ workout.exercise_summary|length - 5 }} autres</span>
-    </div>
+    <div class="text-tertiary text-sm" style="padding: 6px 0;">+ {{ workout.exercise_summary|length - 5 }} autres</div>
     {% endif %}
   </div>
   {% endif %}
