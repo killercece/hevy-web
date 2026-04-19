@@ -632,4 +632,53 @@ def sync_cdn_videos(session) -> tuple[int, int]:
     if added:
         session.commit()
 
+    # 3. DÉDUP : fusionne les doublons par nom normalisé (garde celui avec vidéo)
+    deduped = _dedupe_exercises(session)
+    if deduped:
+        session.commit()
+
     return (updated, added)
+
+
+def _dedupe_exercises(session) -> int:
+    """Fusionne les doublons d'exercices non-custom par nom normalisé.
+
+    Règle : garde celui avec cdn_video_id, sinon le plus ancien (id min).
+    Les références workout/routine sont repointées vers le keeper avant
+    suppression. Retourne le nombre d'exercices supprimés.
+    """
+    from collections import defaultdict
+
+    from sqlalchemy import text
+
+    existing = session.query(Exercise).filter(Exercise.is_custom.is_(False)).all()
+    by_key: dict[str, list[Exercise]] = defaultdict(list)
+    for ex in existing:
+        by_key[_name_key(ex.name)].append(ex)
+
+    removed = 0
+    for key, group in by_key.items():
+        if len(group) < 2:
+            continue
+        # Tri : ceux avec vidéo d'abord, puis par id ascendant
+        group.sort(key=lambda e: (0 if e.cdn_video_id else 1, e.id))
+        keeper = group[0]
+        for dup in group[1:]:
+            # Propage la vidéo au keeper si besoin
+            if not keeper.cdn_video_id and dup.cdn_video_id:
+                keeper.cdn_video_id = dup.cdn_video_id
+                keeper.cdn_video_slug = dup.cdn_video_slug
+            # Repointe les FK vers le keeper (workout_exercise, routine_exercise, personal_record)
+            for table in ("workout_exercise", "routine_exercise", "personal_record"):
+                try:
+                    session.execute(
+                        text(
+                            f"UPDATE {table} SET exercise_id = :k WHERE exercise_id = :d"
+                        ),
+                        {"k": keeper.id, "d": dup.id},
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
+            session.delete(dup)
+            removed += 1
+    return removed
