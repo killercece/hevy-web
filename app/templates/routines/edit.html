@@ -57,8 +57,8 @@
                 </template>
               </div>
               <div class="flex-1" style="min-width: 0;">
-                <div class="ex-block__name" x-text="ex.name"></div>
-                <div class="ex-block__muscle" x-text="ex.muscleGroup"></div>
+                <div class="ex-block__name" x-text="ex.name_fr || ex.name"></div>
+                <div class="ex-block__muscle" x-text="ex.muscle_group_fr || ex.muscleGroup"></div>
               </div>
               <button type="button" class="btn btn--icon btn--sm" @click="removeExercise(exIndex)" aria-label="Retirer">
                 <i data-lucide="trash-2"></i>
@@ -136,8 +136,8 @@
         </div>
         <div class="ex-library-filters">
           <button type="button" class="chip" :class="{ 'is-active': !pickerMuscle }" @click="pickerMuscle = null">Tous</button>
-          <template x-for="mg in muscleGroups" :key="mg">
-            <button type="button" class="chip" :class="{ 'is-active': pickerMuscle === mg }" @click="pickerMuscle = (pickerMuscle === mg ? null : mg)" x-text="mg"></button>
+          <template x-for="mg in muscleGroups" :key="mg.value">
+            <button type="button" class="chip" :class="{ 'is-active': pickerMuscle === mg.value }" @click="pickerMuscle = (pickerMuscle === mg.value ? null : mg.value)" x-text="mg.label"></button>
           </template>
         </div>
         <div class="modal__body-scroll">
@@ -153,10 +153,10 @@
                   </template>
                 </div>
                 <div class="ex-list__body">
-                  <div class="ex-list__name" x-text="ex.name"></div>
+                  <div class="ex-list__name" x-text="ex.name_fr || ex.name"></div>
                   <div class="ex-list__meta">
-                    <span x-text="ex.muscleGroup"></span>
-                    <span x-text="'· ' + (ex.equipment || 'bodyweight')"></span>
+                    <span x-text="ex.muscle_group_fr || ex.muscleGroup"></span>
+                    <span x-text="'· ' + (ex.equipment_fr || ex.equipment || 'Poids du corps')"></span>
                   </div>
                 </div>
               </div>
@@ -197,8 +197,11 @@
               this.data.exercises = (r.exercises || []).map(ex => ({
                 exerciseId: ex.exerciseId || ex.exercise_id,
                 name: ex.name,
+                name_fr: ex.name_fr,
                 muscleGroup: ex.muscleGroup,
+                muscle_group_fr: ex.muscle_group_fr,
                 equipment: ex.equipment,
+                equipment_fr: ex.equipment_fr,
                 cdn_video_url: ex.cdn_video_url || null,
                 notes: ex.notes || '',
                 rest_seconds: ex.rest_seconds || 90,
@@ -223,14 +226,24 @@
       },
 
       get muscleGroups() {
-        return [...new Set(this.exerciseLibrary.map(e => e.muscleGroup).filter(Boolean))].sort();
+        const seen = new Set();
+        const list = [];
+        for (const e of this.exerciseLibrary) {
+          if (!e.muscleGroup || seen.has(e.muscleGroup)) continue;
+          seen.add(e.muscleGroup);
+          list.push({ value: e.muscleGroup, label: e.muscle_group_fr || e.muscleGroup });
+        }
+        return list.sort((a, b) => a.label.localeCompare(b.label, 'fr'));
       },
 
       get filteredExercises() {
         const q = this.pickerQuery.toLowerCase().trim();
         return this.exerciseLibrary.filter(e => {
           if (this.pickerMuscle && e.muscleGroup !== this.pickerMuscle) return false;
-          if (q && !e.name.toLowerCase().includes(q)) return false;
+          if (q) {
+            const hay = ((e.name_fr || '') + ' ' + (e.name || '')).toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
           return true;
         });
       },
@@ -243,8 +256,11 @@
         this.data.exercises.push({
           exerciseId: ex.id,
           name: ex.name,
+          name_fr: ex.name_fr,
           muscleGroup: ex.muscleGroup,
+          muscle_group_fr: ex.muscle_group_fr,
           equipment: ex.equipment,
+          equipment_fr: ex.equipment_fr,
           cdn_video_url: ex.cdn_video_url || null,
           sets: [{ type: 'normal', reps: null, weight: null }]
         });

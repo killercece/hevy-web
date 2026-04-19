@@ -36,9 +36,9 @@
         </template>
         <div class="ex-hero__overlay"></div>
         <div class="ex-hero__body">
-          <h2 class="ex-hero__title" x-text="exercise.name"></h2>
+          <h2 class="ex-hero__title" x-text="exercise.name_fr || exercise.name"></h2>
           <div class="ex-hero__meta">
-            <span class="chip" x-text="exercise.muscleGroup"></span>
+            <span class="chip" x-text="exercise.muscle_group_fr || exercise.muscleGroup"></span>
             <span class="chip chip--muted" x-text="exercise.equipment"></span>
             <span class="chip chip--muted" x-text="exercise.exerciseType || 'weight'"></span>
           </div>
@@ -58,7 +58,7 @@
           <div class="row gap-3" style="margin-bottom: var(--space-3);">
             <div class="stat" style="flex:1;">
               <div class="stat__label">Muscle</div>
-              <div class="text-primary font-semibold" style="margin-top:4px;" x-text="exercise.muscleGroup"></div>
+              <div class="text-primary font-semibold" style="margin-top:4px;" x-text="exercise.muscle_group_fr || exercise.muscleGroup"></div>
             </div>
             <div class="stat" style="flex:1;">
               <div class="stat__label">Équipement</div>

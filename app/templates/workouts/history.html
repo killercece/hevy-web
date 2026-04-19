@@ -73,7 +73,7 @@
                       <div class="ex-list__thumb-fallback"><i data-lucide="dumbbell"></i></div>
                     </template>
                   </div>
-                  <div class="history-card__ex-name"><strong x-text="(ex.sets || []).length + '×'"></strong> <span x-text="ex.name"></span></div>
+                  <div class="history-card__ex-name"><strong x-text="(ex.sets || []).length + '×'"></strong> <span x-text="ex.name_fr || ex.name"></span></div>
                   <div class="history-card__ex-sets" x-text="bestSet(ex)"></div>
                 </div>
               </template>

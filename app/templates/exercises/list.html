@@ -21,15 +21,15 @@
 
   <div class="ex-library-filters">
     <button type="button" class="chip" :class="{ 'is-active': !muscleFilter }" @click="muscleFilter = null">Tous</button>
-    <template x-for="mg in muscleGroups" :key="mg">
-      <button type="button" class="chip" :class="{ 'is-active': muscleFilter === mg }" @click="muscleFilter = (muscleFilter === mg ? null : mg)" x-text="mg"></button>
+    <template x-for="mg in muscleGroups" :key="mg.value">
+      <button type="button" class="chip" :class="{ 'is-active': muscleFilter === mg.value }" @click="muscleFilter = (muscleFilter === mg.value ? null : mg.value)" x-text="mg.label"></button>
     </template>
   </div>
 
   <div class="ex-library-filters" x-show="equipments.length > 0">
     <button type="button" class="chip chip--muted" :class="{ 'is-active': !equipmentFilter }" @click="equipmentFilter = null">Tout équipement</button>
-    <template x-for="eq in equipments" :key="eq">
-      <button type="button" class="chip chip--muted" :class="{ 'is-active': equipmentFilter === eq }" @click="equipmentFilter = (equipmentFilter === eq ? null : eq)" x-text="eq"></button>
+    <template x-for="eq in equipments" :key="eq.value">
+      <button type="button" class="chip chip--muted" :class="{ 'is-active': equipmentFilter === eq.value }" @click="equipmentFilter = (equipmentFilter === eq.value ? null : eq.value)" x-text="eq.label"></button>
     </template>
   </div>
 
@@ -55,10 +55,10 @@
         </div>
         <div class="ex-card__overlay"></div>
         <div class="ex-card__body">
-          <div class="ex-card__name" x-text="ex.name"></div>
+          <div class="ex-card__name" x-text="ex.name_fr || ex.name"></div>
           <div class="ex-card__meta">
-            <span x-text="ex.muscleGroup"></span>
-            <span x-show="ex.equipment" x-text="ex.equipment"></span>
+            <span x-text="ex.muscle_group_fr || ex.muscleGroup"></span>
+            <span x-show="ex.equipment" x-text="ex.equipment_fr || ex.equipment"></span>
           </div>
         </div>
       </a>
@@ -78,10 +78,10 @@
           </template>
         </div>
         <div class="ex-list__body">
-          <div class="ex-list__name" x-text="ex.name"></div>
+          <div class="ex-list__name" x-text="ex.name_fr || ex.name"></div>
           <div class="ex-list__meta">
-            <span x-text="ex.muscleGroup"></span>
-            <span x-text="'· ' + (ex.equipment || 'bodyweight')"></span>
+            <span x-text="ex.muscle_group_fr || ex.muscleGroup"></span>
+            <span x-text="'· ' + (ex.equipment_fr || ex.equipment || 'Poids du corps')"></span>
           </div>
         </div>
         <i data-lucide="chevron-right" class="text-tertiary"></i>

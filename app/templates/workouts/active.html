@@ -42,8 +42,8 @@
             </template>
           </div>
           <div class="flex-1" style="min-width: 0;">
-            <div class="ex-block__name" x-text="ex.name"></div>
-            <div class="ex-block__muscle" x-text="ex.muscleGroup + (ex.equipment ? ' · ' + ex.equipment : '')"></div>
+            <div class="ex-block__name" x-text="ex.name_fr || ex.name"></div>
+            <div class="ex-block__muscle" x-text="(ex.muscle_group_fr || ex.muscleGroup) + ((ex.equipment_fr || ex.equipment) ? ' · ' + (ex.equipment_fr || ex.equipment) : '')"></div>
           </div>
           <button type="button" class="btn btn--icon btn--ghost btn--sm" @click="removeExercise(exIndex)" aria-label="Retirer">
             <i data-lucide="more-vertical"></i>
@@ -180,10 +180,10 @@
                   </template>
                 </div>
                 <div class="ex-list__body">
-                  <div class="ex-list__name" x-text="ex.name"></div>
+                  <div class="ex-list__name" x-text="ex.name_fr || ex.name"></div>
                   <div class="ex-list__meta">
-                    <span x-text="ex.muscleGroup"></span>
-                    <span x-text="'· ' + (ex.equipment || 'bodyweight')"></span>
+                    <span x-text="ex.muscle_group_fr || ex.muscleGroup"></span>
+                    <span x-text="'· ' + (ex.equipment_fr || ex.equipment || 'Poids du corps')"></span>
                   </div>
                 </div>
               </div>

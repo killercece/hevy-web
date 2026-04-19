@@ -44,11 +44,25 @@ document.addEventListener('alpine:init', () => {
     },
 
     get muscleGroups() {
-      return [...new Set(this.items.map(e => e.muscleGroup).filter(Boolean))].sort();
+      const seen = new Set();
+      const list = [];
+      for (const e of this.items) {
+        if (!e.muscleGroup || seen.has(e.muscleGroup)) continue;
+        seen.add(e.muscleGroup);
+        list.push({ value: e.muscleGroup, label: e.muscle_group_fr || e.muscleGroup });
+      }
+      return list.sort((a, b) => a.label.localeCompare(b.label, 'fr'));
     },
 
     get equipments() {
-      return [...new Set(this.items.map(e => e.equipment).filter(Boolean))].sort();
+      const seen = new Set();
+      const list = [];
+      for (const e of this.items) {
+        if (!e.equipment || seen.has(e.equipment)) continue;
+        seen.add(e.equipment);
+        list.push({ value: e.equipment, label: e.equipment_fr || e.equipment });
+      }
+      return list.sort((a, b) => a.label.localeCompare(b.label, 'fr'));
     },
 
     get filtered() {
@@ -56,7 +70,10 @@ document.addEventListener('alpine:init', () => {
       return this.items.filter(e => {
         if (this.muscleFilter && e.muscleGroup !== this.muscleFilter) return false;
         if (this.equipmentFilter && e.equipment !== this.equipmentFilter) return false;
-        if (q && !(e.name || '').toLowerCase().includes(q)) return false;
+        if (q) {
+          const hay = ((e.name_fr || '') + ' ' + (e.name || '')).toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
         return true;
       });
     }

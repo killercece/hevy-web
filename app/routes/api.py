@@ -202,16 +202,38 @@ def import_data():
 
 
 def _exercise_hevy_format(e: Exercise) -> dict:
-    """Format camelCase pour le Frontend (compat conventions Hevy)."""
+    """Format camelCase pour le Frontend (compat conventions Hevy).
+
+    Ajoute des champs `*_fr` traduits en français pour l'affichage UI.
+    """
+    from ..utils.i18n import (
+        translate_equipment,
+        translate_exercise_name,
+        translate_exercise_type,
+        translate_muscle,
+    )
+
     video_url = e.cdn_video_url
+    name_fr = translate_exercise_name(e.name)
+    muscle_fr = translate_muscle(e.muscle_group or "")
+    equipment_fr = translate_equipment(e.equipment or "")
+    type_fr = translate_exercise_type(e.exercise_type or "")
     return {
         "id": e.id,
         "name": e.name,
+        "name_fr": name_fr,
+        "nameFr": name_fr,
         "muscleGroup": e.muscle_group,
         "muscle_group": e.muscle_group,  # alias snake_case
+        "muscle_group_fr": muscle_fr,
+        "muscleGroupFr": muscle_fr,
         "equipment": e.equipment,
+        "equipment_fr": equipment_fr,
+        "equipmentFr": equipment_fr,
         "exerciseType": e.exercise_type,
         "exercise_type": e.exercise_type,
+        "exercise_type_fr": type_fr,
+        "exerciseTypeFr": type_fr,
         "instructions": e.instructions,
         "imageUrl": e.image_url,
         "image_url": e.image_url,
@@ -461,6 +483,12 @@ def delete_folder(folder_id: int):
 
 def _routine_hevy_format(r: Routine, include_sets: bool = True) -> dict:
     """Format de routine pour le Frontend (title + exercises flat)."""
+    from ..utils.i18n import (
+        translate_equipment,
+        translate_exercise_name,
+        translate_muscle,
+    )
+
     exercises = []
     for re in r.exercises:
         sets_data = [
@@ -474,14 +502,20 @@ def _routine_hevy_format(r: Routine, include_sets: bool = True) -> dict:
             }
             for s in re.sets
         ]
+        ex_name = re.exercise.name if re.exercise else "?"
+        ex_muscle = re.exercise.muscle_group if re.exercise else None
+        ex_equip = re.exercise.equipment if re.exercise else None
         exercises.append(
             {
                 "id": re.id,
                 "exerciseId": re.exercise_id,
                 "exercise_id": re.exercise_id,
-                "name": re.exercise.name if re.exercise else "?",
-                "muscleGroup": re.exercise.muscle_group if re.exercise else None,
-                "equipment": re.exercise.equipment if re.exercise else None,
+                "name": ex_name,
+                "name_fr": translate_exercise_name(ex_name) if ex_name else ex_name,
+                "muscleGroup": ex_muscle,
+                "muscle_group_fr": translate_muscle(ex_muscle or ""),
+                "equipment": ex_equip,
+                "equipment_fr": translate_equipment(ex_equip or ""),
                 "cdn_video_url": (
                     re.exercise.cdn_video_url if re.exercise else None
                 ),
@@ -768,6 +802,8 @@ def list_workouts():
 
 def _workout_hevy_format(w: Workout) -> dict:
     """Format de workout compatible conventions Hevy + front."""
+    from ..utils.i18n import translate_exercise_name, translate_muscle
+
     pr_count = sum(
         1 for we in w.exercises for s in we.sets if s.is_pr and s.completed
     )
@@ -785,11 +821,15 @@ def _workout_hevy_format(w: Workout) -> dict:
             }
             for s in we.sets
         ]
+        ex_name = we.exercise.name if we.exercise else "?"
+        ex_muscle = we.exercise.muscle_group if we.exercise else None
         exercise_history.append(
             {
                 "exerciseId": we.exercise_id,
-                "name": we.exercise.name if we.exercise else "?",
-                "muscleGroup": we.exercise.muscle_group if we.exercise else None,
+                "name": ex_name,
+                "name_fr": translate_exercise_name(ex_name) if ex_name else ex_name,
+                "muscleGroup": ex_muscle,
+                "muscle_group_fr": translate_muscle(ex_muscle or ""),
                 "cdn_video_url": (
                     we.exercise.cdn_video_url if we.exercise else None
                 ),
