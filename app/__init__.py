@@ -1,0 +1,128 @@
+"""Application factory Flask pour Hevy-Web.
+
+Structure :
+- create_app(config_class) : instancie l'app avec sa config
+- extensions : db (SQLAlchemy), login_manager (Flask-Login), migrate (Alembic)
+- blueprints : auth, main (pages), api (JSON)
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from flask import Flask
+
+from config import get_config
+
+from .extensions import db, login_manager, migrate
+
+
+def create_app(config_class=None) -> Flask:
+    """Crée et retourne une instance Flask configurée."""
+    app = Flask(
+        __name__,
+        template_folder="templates",
+        static_folder="static",
+    )
+
+    # Chargement de la config
+    if config_class is None:
+        config_class = get_config()
+    app.config.from_object(config_class)
+
+    # S'assurer que le dossier data/ existe (pour SQLite)
+    data_dir = Path(app.root_path).parent / "data"
+    data_dir.mkdir(exist_ok=True)
+
+    # Initialisation des extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login_page"
+    login_manager.login_message = "Connectez-vous pour accéder à cette page."
+    login_manager.login_message_category = "info"
+
+    # Handler unauthorized : 401 JSON pour /api, redirect pour les pages
+    @login_manager.unauthorized_handler
+    def _unauthorized():
+        from flask import jsonify, redirect, request, url_for
+
+        if request.path.startswith("/api/"):
+            return jsonify(error="unauthorized", message="Connexion requise"), 401
+        return redirect(url_for("auth.login_page", next=request.url))
+
+    # Enregistrement des blueprints
+    from .routes.api import api_bp
+    from .routes.auth import auth_bp
+    from .routes.main import main_bp
+
+    app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(api_bp, url_prefix="/api")
+
+    # User loader Flask-Login
+    from .models import User
+
+    @login_manager.user_loader
+    def load_user(user_id: str):
+        return db.session.get(User, int(user_id))
+
+    # Création des tables + seed au premier lancement
+    with app.app_context():
+        db.create_all()
+        _bootstrap_initial_data(app)
+
+    # Handlers d'erreur JSON pour l'API
+    _register_error_handlers(app)
+
+    return app
+
+
+def _bootstrap_initial_data(app: Flask) -> None:
+    """Seed initial : user admin + bibliothèque d'exercices."""
+    from .models import Exercise, User
+    from .utils.seed_exercises import seed_exercises
+
+    # User admin par défaut si aucun utilisateur
+    if not db.session.query(User).first():
+        admin = User(
+            email=app.config["ADMIN_EMAIL"],
+            unit_system=app.config["DEFAULT_UNIT_SYSTEM"],
+        )
+        admin.set_password(app.config["ADMIN_PASSWORD"])
+        db.session.add(admin)
+        db.session.commit()
+        app.logger.info(
+            "Admin par défaut créé : %s (mdp: %s)",
+            app.config["ADMIN_EMAIL"],
+            app.config["ADMIN_PASSWORD"],
+        )
+
+    # Seed exercices si table vide
+    if not db.session.query(Exercise).first():
+        seed_exercises(db.session)
+        app.logger.info("Bibliothèque d'exercices seedée.")
+
+
+def _register_error_handlers(app: Flask) -> None:
+    """Enregistre des handlers d'erreur JSON pour les routes /api."""
+    from flask import jsonify, request
+
+    @app.errorhandler(404)
+    def not_found(err):
+        if request.path.startswith("/api/"):
+            return jsonify(error="not_found", message=str(err)), 404
+        return err, 404
+
+    @app.errorhandler(400)
+    def bad_request(err):
+        if request.path.startswith("/api/"):
+            return jsonify(error="bad_request", message=str(err)), 400
+        return err, 400
+
+    @app.errorhandler(401)
+    def unauthorized(err):
+        if request.path.startswith("/api/"):
+            return jsonify(error="unauthorized", message="Connexion requise"), 401
+        return err, 401
