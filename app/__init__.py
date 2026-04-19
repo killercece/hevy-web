@@ -69,9 +69,18 @@ def create_app(config_class=None) -> Flask:
         return db.session.get(User, int(user_id))
 
     # Création des tables + seed au premier lancement
+    # NB: Tolère les races entre workers gunicorn (SQLite concurrent CREATE TABLE)
     with app.app_context():
-        db.create_all()
-        _bootstrap_initial_data(app)
+        from sqlalchemy.exc import IntegrityError, OperationalError
+
+        try:
+            db.create_all()
+        except (OperationalError, IntegrityError):
+            db.session.rollback()
+        try:
+            _bootstrap_initial_data(app)
+        except (OperationalError, IntegrityError):
+            db.session.rollback()
 
     # Handlers d'erreur JSON pour l'API
     _register_error_handlers(app)
