@@ -1,20 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Exercices — Hevy{% endblock %}
 
-{% block header %}
-<header class="app-header">
-  <h1 class="app-header__title">Bibliothèque</h1>
-  <div class="app-header__actions">
-    <button type="button" class="app-header__action" @click="viewMode = (viewMode === 'grid' ? 'list' : 'grid')" aria-label="Basculer vue" x-data>
-      <i data-lucide="layout-grid" x-show="viewMode !== 'grid'"></i>
-      <i data-lucide="list" x-show="viewMode === 'grid'"></i>
-    </button>
-  </div>
-</header>
-{% endblock %}
-
 {% block content %}
 <div class="container" x-data="exerciseLibrary()" x-init="load()">
+
+  <header class="app-header">
+    <h1 class="app-header__title">Bibliothèque</h1>
+    <div class="app-header__actions">
+      <button type="button" class="app-header__action" @click="viewMode = (viewMode === 'grid' ? 'list' : 'grid')" aria-label="Basculer vue">
+        <i data-lucide="layout-grid" x-show="viewMode !== 'grid'"></i>
+        <i data-lucide="list" x-show="viewMode === 'grid'"></i>
+      </button>
+    </div>
+  </header>
 
   <div class="searchbar mb-3">
     <i data-lucide="search"></i>
