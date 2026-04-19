@@ -1181,22 +1181,38 @@ def stats_overview():
 @api_bp.get("/stats/calendar")
 @login_required
 def stats_calendar():
-    """Jours avec workout sur un mois donné (?month=YYYY-MM)."""
-    month_str = request.args.get("month")
-    try:
-        if month_str:
-            first = datetime.strptime(month_str, "%Y-%m").date()
-        else:
-            today = datetime.utcnow().date()
-            first = today.replace(day=1)
-    except ValueError:
-        return jsonify(error="invalid_month_format"), 400
+    """Jours avec workout : soit par mois (?month=YYYY-MM), soit par N dernières semaines (?weeks=4).
 
-    # Fin du mois : premier jour du mois suivant
-    if first.month == 12:
-        last = first.replace(year=first.year + 1, month=1)
+    Format de sortie :
+    - days : jours couverts (day = numéro du jour, date ISO, count, volume,
+      duration_seconds, level 0-4 pour heatmap en mode weeks)
+    - month : label ("YYYY-MM" ou "last N weeks")
+    """
+    today = datetime.utcnow().date()
+    weeks_param = request.args.get("weeks")
+
+    if weeks_param:
+        try:
+            weeks = max(1, min(int(weeks_param), 52))
+        except ValueError:
+            return jsonify(error="invalid_weeks"), 400
+        first = today - timedelta(days=weeks * 7 - 1)
+        last = today + timedelta(days=1)
+        label = f"last {weeks} weeks"
     else:
-        last = first.replace(month=first.month + 1)
+        month_str = request.args.get("month")
+        try:
+            if month_str:
+                first = datetime.strptime(month_str, "%Y-%m").date()
+            else:
+                first = today.replace(day=1)
+        except ValueError:
+            return jsonify(error="invalid_month_format"), 400
+        if first.month == 12:
+            last = first.replace(year=first.year + 1, month=1)
+        else:
+            last = first.replace(month=first.month + 1)
+        label = first.strftime("%Y-%m")
 
     workouts = (
         db.session.query(Workout)
@@ -1213,15 +1229,46 @@ def stats_calendar():
     for w in workouts:
         if not w.ended_at:
             continue
-        day = w.ended_at.date().isoformat()
+        iso = w.ended_at.date().isoformat()
         entry = by_day.setdefault(
-            day, {"date": day, "count": 0, "volume": 0.0, "duration_seconds": 0}
+            iso,
+            {
+                "date": iso,
+                "day": w.ended_at.day,
+                "count": 0,
+                "volume": 0.0,
+                "duration_seconds": 0,
+            },
         )
         entry["count"] += 1
         entry["volume"] += w.total_volume
         entry["duration_seconds"] += w.duration_seconds or 0
 
-    return jsonify(
-        month=first.strftime("%Y-%m"),
-        days=list(by_day.values()),
-    )
+    # Mode weeks : on matérialise tous les jours (y compris ceux sans workout)
+    # et on calcule un level 0-4 pour la heatmap du profil
+    if weeks_param:
+        max_vol = max((d["volume"] for d in by_day.values()), default=1) or 1
+        days = []
+        cur = first
+        while cur <= today:
+            iso = cur.isoformat()
+            d = by_day.get(
+                iso,
+                {
+                    "date": iso,
+                    "day": cur.day,
+                    "count": 0,
+                    "volume": 0.0,
+                    "duration_seconds": 0,
+                },
+            )
+            if d["count"] == 0:
+                d["level"] = 0
+            else:
+                ratio = d["volume"] / max_vol
+                d["level"] = min(4, max(1, int(ratio * 4) + 1))
+            days.append(d)
+            cur += timedelta(days=1)
+        return jsonify(month=label, days=days)
+
+    return jsonify(month=label, days=list(by_day.values()))
