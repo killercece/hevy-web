@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Accueil — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <h1 class="app-header__title">Hevy<span class="text-accent">.</span></h1>
+  <div class="app-header__actions">
+    <a href="{{ url_for('main.settings') }}" class="app-header__action" aria-label="Paramètres">
+      <i data-lucide="settings"></i>
+    </a>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  {# Hero CTA : Start Empty Workout #}
+  <a href="{{ url_for('main.workout_start') }}" class="hero-cta">
+    <div class="hero-cta__icon">
+      <i data-lucide="play"></i>
+    </div>
+    <div class="hero-cta__content">
+      <h3>Démarrer un workout vide</h3>
+      <p>Ajoute tes exercices à la volée</p>
+    </div>
+    <i data-lucide="chevron-right" class="hero-cta__arrow"></i>
+  </a>
+
+  {# Stats rapides #}
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat__value">{{ stats.workouts_count|default(0) }}</div>
+      <div class="stat__label">Workouts</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ stats.total_volume_display|default('0 kg') }}</div>
+      <div class="stat__label">Volume</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ stats.streak|default(0) }}🔥</div>
+      <div class="stat__label">Série</div>
+    </div>
+  </div>
+
+  {# Routines #}
+  <section class="section">
+    <div class="section__header">
+      <div class="section__title">Routines</div>
+      <a href="{{ url_for('main.routine_new') }}" class="section__action">+ Nouvelle</a>
+    </div>
+
+    <div class="stack">
+      {% for folder in folders %}
+      <div class="folder" x-data="{ open: true }" :class="{ 'is-open': open }">
+        <div class="folder__header" @click="open = !open">
+          <i data-lucide="chevron-right" class="folder__chevron"></i>
+          <i data-lucide="folder" class="text-secondary"></i>
+          <span class="folder__title">{{ folder.title }}</span>
+          <span class="folder__count">{{ folder.routines|length }}</span>
+        </div>
+        <div class="folder__body">
+          {% for routine in folder.routines %}
+            {% include "_partials/routine_card.html" %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      {% for routine in routines_no_folder %}
+        {% include "_partials/routine_card.html" %}
+      {% endfor %}
+
+      {% if not folders and not routines_no_folder %}
+        <div class="empty">
+          <i data-lucide="list-todo"></i>
+          <div class="empty__title">Aucune routine</div>
+          <div class="empty__desc">Crée ta première routine pour enchaîner tes workouts rapidement.</div>
+          <a href="{{ url_for('main.routine_new') }}" class="btn btn--primary">
+            <i data-lucide="plus"></i>
+            <span>Créer une routine</span>
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  {# Derniers workouts #}
+  {% if recent_workouts %}
+  <section class="section">
+    <div class="section__header">
+      <div class="section__title">Derniers workouts</div>
+      <a href="{{ url_for('main.workout_history') }}" class="section__action">Voir tout</a>
+    </div>
+    <div class="stack">
+      {% for workout in recent_workouts[:3] %}
+        {% include "_partials/workout_card.html" %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

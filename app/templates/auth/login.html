@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% set hide_nav = true %}
+{% block title %}Connexion — Hevy{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-wrap__logo">
+    <div class="auth-wrap__logo-mark">
+      <i data-lucide="dumbbell"></i>
+    </div>
+    <div class="auth-wrap__brand">Hevy<span>.</span></div>
+    <div class="auth-wrap__subtitle">Trackez vos entraînements, gagnez en force.</div>
+  </div>
+
+  <form class="auth-form" method="post" action="{{ url_for('auth.login_submit') }}">
+    <div class="input-group">
+      <label class="input-group__label" for="email">Email</label>
+      <input class="input" type="email" name="email" id="email" required autocomplete="email" placeholder="vous@exemple.com">
+    </div>
+
+    <div class="input-group">
+      <label class="input-group__label" for="password">Mot de passe</label>
+      <input class="input" type="password" name="password" id="password" required autocomplete="current-password" placeholder="••••••••">
+    </div>
+
+    <button type="submit" class="btn btn--primary btn--lg btn--block">
+      <span>Se connecter</span>
+      <i data-lucide="arrow-right"></i>
+    </button>
+
+    <div class="auth-form__switch">
+      Pas encore de compte ?
+      <a href="{{ url_for('auth.register_page') }}">Créer un compte</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

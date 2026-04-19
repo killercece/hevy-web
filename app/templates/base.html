@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0E0E0E">
+  <title>{% block title %}Hevy Web{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+  {# Alpine.js + HTMX via CDN (pas de build) #}
+  <script defer src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+  <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
+
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <div class="app">
+    {# Top nav desktop #}
+    {% if current_user.is_authenticated and not hide_nav %}
+    <nav class="top-nav">
+      <a href="{{ url_for('main.dashboard') }}" class="top-nav__brand">Hevy<span>.</span></a>
+      <div class="top-nav__links">
+        <a href="{{ url_for('main.dashboard') }}" class="top-nav__link {% if request.endpoint == 'main.dashboard' %}is-active{% endif %}">Home</a>
+        <a href="{{ url_for('main.exercises_list') }}" class="top-nav__link {% if 'exercises' in (request.endpoint or '') %}is-active{% endif %}">Exercises</a>
+        <a href="{{ url_for('main.workout_history') }}" class="top-nav__link {% if 'workout' in (request.endpoint or '') %}is-active{% endif %}">Workouts</a>
+        <a href="{{ url_for('main.profile') }}" class="top-nav__link {% if request.endpoint == 'main.profile' %}is-active{% endif %}">Profile</a>
+      </div>
+      <div class="top-nav__user">
+        <a href="{{ url_for('main.profile') }}" class="avatar" title="{{ current_user.email }}">
+          {{ current_user.email[0]|upper }}
+        </a>
+      </div>
+    </nav>
+    {% endif %}
+
+    {# Header contextuel (surchageable) #}
+    {% block header %}{% endblock %}
+
+    <main class="app-main">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)">
+            {% for category, message in messages %}
+              <div class="flash flash--{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    {# Bottom navbar mobile #}
+    {% if current_user.is_authenticated and not hide_nav %}
+    <nav class="bottom-nav">
+      <a href="{{ url_for('main.dashboard') }}" class="bottom-nav__item {% if request.endpoint == 'main.dashboard' %}is-active{% endif %}">
+        <i data-lucide="home"></i>
+        <span>Home</span>
+      </a>
+      <a href="{{ url_for('main.exercises_list') }}" class="bottom-nav__item {% if 'exercises' in (request.endpoint or '') %}is-active{% endif %}">
+        <i data-lucide="dumbbell"></i>
+        <span>Exercises</span>
+      </a>
+      <a href="{{ url_for('main.workout_start') }}" class="bottom-nav__item bottom-nav__item--cta">
+        <i data-lucide="plus"></i>
+      </a>
+      <a href="{{ url_for('main.workout_history') }}" class="bottom-nav__item {% if 'workout' in (request.endpoint or '') %}is-active{% endif %}">
+        <i data-lucide="bar-chart-3"></i>
+        <span>History</span>
+      </a>
+      <a href="{{ url_for('main.profile') }}" class="bottom-nav__item {% if request.endpoint == 'main.profile' %}is-active{% endif %}">
+        <i data-lucide="user"></i>
+        <span>Profile</span>
+      </a>
+    </nav>
+    {% endif %}
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+
+  <script>
+    // Init lucide icons après chargement
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) window.lucide.createIcons();
+    });
+    // HTMX : réinitialiser icônes après swap
+    document.addEventListener('htmx:afterSettle', () => {
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

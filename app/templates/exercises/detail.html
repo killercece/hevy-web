@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Exercice — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <a href="{{ url_for('main.exercises_list') }}" class="app-header__back" aria-label="Retour">
+    <i data-lucide="arrow-left"></i>
+  </a>
+  <h1 class="app-header__title" x-data x-text="window.__exName || 'Exercice'">Exercice</h1>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container" x-data="exerciseDetail({{ exercise_id }})" x-init="load()">
+  <div x-show="loading" class="stack">
+    <div class="skeleton" style="height:180px;"></div>
+    <div class="skeleton" style="height:240px;"></div>
+  </div>
+
+  <template x-if="!loading && exercise">
+    <div>
+      <div class="ex-detail-hero">
+        <div class="ex-detail-hero__img">
+          <i data-lucide="dumbbell"></i>
+        </div>
+        <div class="ex-detail-hero__name" x-text="exercise.name"></div>
+        <div class="ex-detail-hero__meta">
+          <span class="chip" x-text="exercise.muscleGroup"></span>
+          <span class="chip chip--muted" x-text="exercise.equipment"></span>
+        </div>
+      </div>
+
+      <div class="tabs mb-3">
+        <div class="tabs__item" :class="{ 'is-active': tab === 'about' }" @click="tab = 'about'">À propos</div>
+        <div class="tabs__item" :class="{ 'is-active': tab === 'history' }" @click="tab = 'history'">Historique</div>
+        <div class="tabs__item" :class="{ 'is-active': tab === 'charts' }" @click="tab = 'charts'; $nextTick(renderCharts)">Charts</div>
+        <div class="tabs__item" :class="{ 'is-active': tab === 'records' }" @click="tab = 'records'">Records</div>
+      </div>
+
+      <!-- About -->
+      <div x-show="tab === 'about'">
+        <div class="card">
+          <div class="text-sm text-secondary mb-2">Instructions</div>
+          <div x-text="exercise.instructions || 'Aucune instruction disponible.'"></div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div x-show="tab === 'history'">
+        <template x-if="history.length === 0">
+          <div class="empty">
+            <i data-lucide="history"></i>
+            <div class="empty__title">Aucun historique</div>
+            <div class="empty__desc">Effectue cet exercice dans un workout pour voir ton historique ici.</div>
+          </div>
+        </template>
+        <div class="stack">
+          <template x-for="session in history" :key="session.date">
+            <div class="card">
+              <div class="text-sm text-secondary mb-2" x-text="formatDate(session.date)"></div>
+              <template x-for="(s, i) in session.sets" :key="i">
+                <div class="row--between row" style="padding: 4px 0; border-bottom: 1px solid var(--divider);">
+                  <span class="set-row__num" x-text="i + 1"></span>
+                  <span class="flex-1 text-sm" x-text="`${s.weight || 0} kg × ${s.reps || 0}`"></span>
+                  <span class="text-tertiary text-sm" x-text="s.rpe ? `RPE ${s.rpe}` : ''"></span>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div x-show="tab === 'charts'">
+        <div class="chart-wrap">
+          <div class="chart-wrap__title">Estimated 1RM dans le temps</div>
+          <canvas id="chart-e1rm"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-wrap__title">Volume par session</div>
+          <canvas id="chart-volume"></canvas>
+        </div>
+      </div>
+
+      <!-- Records -->
+      <div x-show="tab === 'records'">
+        <template x-if="Object.keys(prs || {}).length === 0">
+          <div class="empty">
+            <i data-lucide="trophy"></i>
+            <div class="empty__title">Aucun record</div>
+            <div class="empty__desc">Tes PR apparaîtront ici.</div>
+          </div>
+        </template>
+        <div class="stack">
+          <template x-for="(v, k) in (prs || {})" :key="k">
+            <div class="card row row--between">
+              <div>
+                <div class="text-sm text-secondary uppercase" x-text="k"></div>
+                <div class="text-xl font-bold" x-text="v.value + ' ' + (v.unit || '')"></div>
+              </div>
+              <i data-lucide="trophy" class="text-warning"></i>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}" defer></script>
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('exerciseDetail', (id) => ({
+      id,
+      tab: 'about',
+      exercise: null,
+      history: [],
+      prs: {},
+      loading: true,
+
+      async load() {
+        try {
+          const [ex, hist, prs] = await Promise.all([
+            fetch(`/api/exercises/${this.id}`).then(r => r.json()),
+            fetch(`/api/exercises/${this.id}/history`).then(r => r.json()).catch(() => ({ history: [] })),
+            fetch(`/api/exercises/${this.id}/prs`).then(r => r.json()).catch(() => ({}))
+          ]);
+          this.exercise = ex.exercise || ex;
+          this.history = hist.history || [];
+          this.prs = prs.prs || prs || {};
+          window.__exName = this.exercise.name;
+          document.title = this.exercise.name + ' — Hevy';
+        } catch(e) {}
+        this.loading = false;
+        this.$nextTick(() => window.lucide?.createIcons());
+      },
+
+      formatDate(ts) {
+        if (!ts) return '';
+        return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      },
+
+      renderCharts() {
+        if (!window.HevyCharts || !this.history.length) return;
+        window.HevyCharts.renderE1rm('chart-e1rm', this.history);
+        window.HevyCharts.renderVolume('chart-volume', this.history);
+      }
+    }));
+  });
+</script>
+{% endblock %}

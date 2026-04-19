@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Exercices — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <h1 class="app-header__title">Bibliothèque</h1>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container" x-data="exerciseLibrary()" x-init="load()">
+  <div class="searchbar mb-3">
+    <i data-lucide="search"></i>
+    <input type="text" placeholder="Rechercher un exercice..." x-model="query">
+  </div>
+
+  <div class="ex-library-filters">
+    <button type="button" class="chip" :class="{ 'is-active': !muscleFilter }" @click="muscleFilter = null">Tous</button>
+    <template x-for="mg in muscleGroups" :key="mg">
+      <button type="button" class="chip" :class="{ 'is-active': muscleFilter === mg }" @click="muscleFilter = mg" x-text="mg"></button>
+    </template>
+  </div>
+
+  <div class="ex-library-filters" x-show="equipments.length > 0">
+    <button type="button" class="chip chip--muted" :class="{ 'is-active': !equipmentFilter }" @click="equipmentFilter = null">Tout équipement</button>
+    <template x-for="eq in equipments" :key="eq">
+      <button type="button" class="chip chip--muted" :class="{ 'is-active': equipmentFilter === eq }" @click="equipmentFilter = eq" x-text="eq"></button>
+    </template>
+  </div>
+
+  <div class="ex-list">
+    <template x-for="ex in filtered" :key="ex.id">
+      <a :href="`/exercises/${ex.id}`" class="ex-list__item" style="color: inherit;">
+        <div class="ex-list__img"><i data-lucide="dumbbell"></i></div>
+        <div class="ex-list__body">
+          <div class="ex-list__name" x-text="ex.name"></div>
+          <div class="ex-list__meta">
+            <span x-text="ex.muscleGroup"></span>
+            <span x-text="'· ' + ex.equipment"></span>
+          </div>
+        </div>
+        <i data-lucide="chevron-right" class="text-tertiary"></i>
+      </a>
+    </template>
+  </div>
+
+  <div x-show="!loading && filtered.length === 0" class="empty">
+    <i data-lucide="search-x"></i>
+    <div class="empty__title">Aucun résultat</div>
+    <div class="empty__desc">Essaie un autre terme ou filtre.</div>
+  </div>
+
+  <div x-show="loading" class="stack">
+    <template x-for="i in [1,2,3,4,5]" :key="i">
+      <div class="skeleton" style="height:72px;"></div>
+    </template>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/exercises.js') }}" defer></script>
+{% endblock %}

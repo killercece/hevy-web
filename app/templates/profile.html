@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Profil — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <h1 class="app-header__title">Profil</h1>
+  <div class="app-header__actions">
+    <a href="{{ url_for('main.settings') }}" class="app-header__action" aria-label="Paramètres">
+      <i data-lucide="settings"></i>
+    </a>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container" x-data="profilePage()" x-init="load()">
+  <div class="profile-hero">
+    <div class="profile-hero__avatar">{{ current_user.email[0]|upper }}</div>
+    <div class="profile-hero__name">{{ current_user.email.split('@')[0] }}</div>
+    <div class="profile-hero__email">{{ current_user.email }}</div>
+  </div>
+
+  <div x-show="stats && stats.streak > 0" class="streak-banner">
+    <div class="streak-banner__icon">🔥</div>
+    <div>
+      <div class="streak-banner__count" x-text="(stats?.streak || 0) + ' jours'"></div>
+      <div class="streak-banner__label">Série en cours</div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat__value" x-text="stats?.workouts_count || 0"></div>
+      <div class="stat__label">Workouts</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value" x-text="stats?.total_volume_display || '0 kg'"></div>
+      <div class="stat__label">Volume</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value" x-text="stats?.prs_count || 0"></div>
+      <div class="stat__label">PR</div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="section__header">
+      <div class="section__title">4 dernières semaines</div>
+    </div>
+    <div class="card">
+      <div class="heatmap__header">
+        <div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div>
+      </div>
+      <div class="heatmap">
+        <template x-for="d in calendar" :key="d.date">
+          <div class="heatmap__day" :class="d.level ? `heatmap__day--l${d.level}` : ''" :title="d.date" x-text="d.day"></div>
+        </template>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section__header">
+      <div class="section__title">Derniers records</div>
+    </div>
+    <div class="stack">
+      <template x-for="pr in recentPrs" :key="pr.id">
+        <div class="card row">
+          <i data-lucide="trophy" class="text-warning"></i>
+          <div class="flex-1">
+            <div class="font-semibold" x-text="pr.exercise_name"></div>
+            <div class="text-sm text-secondary" x-text="pr.value + ' ' + (pr.unit || 'kg') + ' · ' + (pr.reps || 1) + ' reps'"></div>
+          </div>
+          <span class="text-tertiary text-sm" x-text="formatDate(pr.date)"></span>
+        </div>
+      </template>
+      <div x-show="recentPrs.length === 0" class="text-sm text-secondary text-center">Aucun PR récent.</div>
+    </div>
+  </section>
+
+  <form method="post" action="{{ url_for('auth.logout') }}" class="mt-4">
+    <button type="submit" class="btn btn--outline btn--block">
+      <i data-lucide="log-out"></i>
+      <span>Déconnexion</span>
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('profilePage', () => ({
+      stats: null,
+      calendar: [],
+      recentPrs: [],
+
+      async load() {
+        try {
+          const r = await fetch('/api/stats');
+          this.stats = await r.json();
+        } catch(e) {}
+        try {
+          const r = await fetch('/api/stats/calendar?weeks=4');
+          const d = await r.json();
+          this.calendar = d.days || [];
+          if (!this.calendar.length) this.calendar = this.generatePlaceholderCalendar();
+        } catch(e) {
+          this.calendar = this.generatePlaceholderCalendar();
+        }
+        try {
+          const r = await fetch('/api/prs/recent?limit=5');
+          const d = await r.json();
+          this.recentPrs = d.items || d.prs || [];
+        } catch(e) {}
+        this.$nextTick(() => window.lucide?.createIcons());
+      },
+
+      generatePlaceholderCalendar() {
+        const days = [];
+        const now = new Date();
+        for (let i = 27; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(d.getDate() - i);
+          days.push({ date: d.toISOString().split('T')[0], day: d.getDate(), level: 0 });
+        }
+        return days;
+      },
+
+      formatDate(ts) {
+        if (!ts) return '';
+        return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      }
+    }));
+  });
+</script>
+{% endblock %}

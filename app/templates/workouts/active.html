@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% set hide_nav = true %}
+{% block title %}Workout en cours — Hevy{% endblock %}
+
+{% block content %}
+<div x-data="activeWorkout({{ initial|tojson|safe if initial else '{}' }})" x-init="start()">
+
+  {# Timer bar sticky #}
+  <div class="workout-timer">
+    <div class="workout-timer__clock">
+      <i data-lucide="clock"></i>
+      <span x-text="elapsedDisplay">00:00</span>
+    </div>
+    <div class="workout-timer__stats">
+      <div class="workout-timer__stat">
+        <strong x-text="totalVolumeDisplay">0 kg</strong>
+        <span>Volume</span>
+      </div>
+      <div class="workout-timer__stat">
+        <strong x-text="completedSets">0</strong>
+        <span>Sets</span>
+      </div>
+    </div>
+    <button type="button" class="btn btn--ghost btn--icon" @click="cancel" aria-label="Annuler">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+
+  <div class="container" style="padding-top: var(--space-3); padding-bottom: 120px;">
+    <input type="text" class="input" x-model="data.title" placeholder="Nom du workout (optionnel)" style="margin-bottom: var(--space-3);">
+
+    {# Exercices #}
+    <template x-for="(ex, exIndex) in data.exercises" :key="exIndex">
+      <div class="ex-block">
+        <div class="ex-block__header">
+          <div class="ex-block__icon"><i data-lucide="dumbbell"></i></div>
+          <div class="flex-1">
+            <div class="ex-block__name" x-text="ex.name"></div>
+            <div class="ex-block__muscle" x-text="ex.muscleGroup"></div>
+          </div>
+          <button type="button" class="btn btn--icon btn--ghost btn--sm" @click="removeExercise(exIndex)" aria-label="Retirer">
+            <i data-lucide="more-vertical"></i>
+          </button>
+        </div>
+
+        <input type="text" class="ex-block__notes" x-model="ex.notes" placeholder="Notes exercice...">
+
+        <div class="set-row__header">
+          <span>#</span>
+          <span>Précédent</span>
+          <span x-text="unit">Kg</span>
+          <span>Reps</span>
+          <span></span>
+        </div>
+
+        <template x-for="(s, sIndex) in ex.sets" :key="sIndex">
+          <div class="set-row"
+               :class="{
+                 'is-completed': s.completed,
+                 'is-warmup': s.type === 'warmup',
+                 'is-drop': s.type === 'drop',
+                 'is-failure': s.type === 'failure'
+               }">
+            <button type="button" class="set-row__num" @click="cycleSetType(exIndex, sIndex)" :aria-label="'Type ' + s.type">
+              <span x-show="s.type === 'normal'" x-text="sIndex + 1"></span>
+              <span x-show="s.type === 'warmup'">W</span>
+              <span x-show="s.type === 'drop'">D</span>
+              <span x-show="s.type === 'failure'">F</span>
+            </button>
+            <span class="set-row__prev" x-text="s.previous || '—'"></span>
+            <input class="set-row__input" type="number" inputmode="decimal" step="0.5"
+                   x-model.number="s.weight" placeholder="—"
+                   :disabled="s.completed">
+            <input class="set-row__input" type="number" inputmode="numeric"
+                   x-model.number="s.reps" placeholder="—"
+                   :disabled="s.completed">
+            <div class="checkbox" :class="{ 'is-checked': s.completed }" @click="toggleSet(exIndex, sIndex)">
+              <i data-lucide="check" class="checkbox__icon"></i>
+            </div>
+          </div>
+        </template>
+
+        <button type="button" class="ex-block__add-set" @click="addSet(exIndex)">
+          <i data-lucide="plus"></i>
+          <span>Ajouter un set</span>
+        </button>
+      </div>
+    </template>
+
+    {# Ajouter exercice #}
+    <button type="button" class="btn btn--outline btn--block" @click="openPicker = true" style="margin-top: var(--space-3);">
+      <i data-lucide="plus"></i>
+      <span>Ajouter un exercice</span>
+    </button>
+  </div>
+
+  {# Bottom bar finish #}
+  <div class="workout-finish-bar">
+    <button type="button" class="btn btn--ghost flex-1" @click="cancel">
+      Annuler
+    </button>
+    <button type="button" class="btn btn--primary flex-1" @click="finish">
+      <i data-lucide="check"></i>
+      <span>Finish Workout</span>
+    </button>
+  </div>
+
+  {# Rest timer modal #}
+  <template x-if="restActive">
+    <div class="modal-backdrop" @click.self="stopRest">
+      <div class="modal">
+        <div class="modal__handle"></div>
+        <div class="rest-timer">
+          <div class="rest-timer__label">Repos</div>
+          <div class="rest-timer__clock" x-text="restDisplay">01:30</div>
+          <div class="rest-timer__actions">
+            <button type="button" class="btn btn--outline" @click="adjustRest(-15)">-15s</button>
+            <button type="button" class="btn btn--outline" @click="adjustRest(15)">+15s</button>
+            <button type="button" class="btn btn--primary" @click="stopRest">Skip</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  {# Exercise picker modal #}
+  <template x-if="openPicker">
+    <div class="modal-backdrop" @click.self="openPicker = false">
+      <div class="modal">
+        <div class="modal__handle"></div>
+        <div class="modal__header">
+          <div class="modal__title">Choisir un exercice</div>
+          <button type="button" class="modal__close" @click="openPicker = false"><i data-lucide="x"></i></button>
+        </div>
+        <div class="searchbar mb-3">
+          <i data-lucide="search"></i>
+          <input type="text" placeholder="Rechercher..." x-model="pickerQuery">
+        </div>
+        <div class="ex-library-filters">
+          <template x-for="mg in muscleGroups" :key="mg">
+            <button type="button" class="chip" :class="{ 'is-active': pickerMuscle === mg }" @click="pickerMuscle = (pickerMuscle === mg ? null : mg)" x-text="mg"></button>
+          </template>
+        </div>
+        <div class="ex-list" style="max-height: 50vh; overflow-y: auto;">
+          <template x-for="ex in filteredExercises" :key="ex.id">
+            <div class="ex-list__item" @click="addExercise(ex); openPicker = false">
+              <div class="ex-list__img"><i data-lucide="dumbbell"></i></div>
+              <div class="ex-list__body">
+                <div class="ex-list__name" x-text="ex.name"></div>
+                <div class="ex-list__meta">
+                  <span x-text="ex.muscleGroup"></span>
+                  <span x-text="'· ' + ex.equipment"></span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<audio id="rest-chime" preload="auto">
+  <source src="{{ url_for('static', filename='audio/chime.mp3') }}" type="audio/mpeg">
+</audio>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/workout.js') }}" defer></script>
+{% endblock %}

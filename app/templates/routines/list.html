@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Routines — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <h1 class="app-header__title">Routines</h1>
+  <div class="app-header__actions">
+    <a href="{{ url_for('main.routine_new') }}" class="app-header__action" aria-label="Nouvelle routine">
+      <i data-lucide="plus"></i>
+    </a>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container" x-data="routinesList()" x-init="load()">
+  <div class="searchbar mb-3">
+    <i data-lucide="search"></i>
+    <input type="text" placeholder="Rechercher une routine..." x-model="query">
+  </div>
+
+  <div x-show="loading" class="stack">
+    <div class="skeleton" style="height:100px;"></div>
+    <div class="skeleton" style="height:100px;"></div>
+  </div>
+
+  <div x-show="!loading && filtered.length > 0" class="stack">
+    <template x-for="r in filtered" :key="r.id">
+      <div class="card routine-card" @click="window.location = `/routines/${r.id}`">
+        <div class="routine-card__header">
+          <div class="flex-1">
+            <div class="routine-card__title" x-text="r.title || r.name"></div>
+            <div class="routine-card__meta" x-text="(r.exercises?.length || 0) + ' exercices · ' + (r.total_sets || 0) + ' sets'"></div>
+          </div>
+          <span class="badge badge--accent" x-text="(r.total_sets || 0) + ' sets'"></span>
+        </div>
+        <div class="routine-card__exercises" x-show="r.exercises?.length > 0"
+             x-text="(r.exercises || []).slice(0,4).map(e => e.name).join(' · ') + ((r.exercises || []).length > 4 ? ' · +' + ((r.exercises.length) - 4) : '')">
+        </div>
+        <div class="routine-card__actions" @click.stop>
+          <a :href="`/workout/start?routine_id=${r.id}`" class="btn btn--primary btn--sm flex-1">
+            <i data-lucide="play"></i>
+            <span>Start</span>
+          </a>
+          <a :href="`/routines/${r.id}/edit`" class="btn btn--outline btn--sm btn--icon" aria-label="Éditer">
+            <i data-lucide="edit-3"></i>
+          </a>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <div x-show="!loading && filtered.length === 0" class="empty">
+    <i data-lucide="list-todo"></i>
+    <div class="empty__title">Aucune routine</div>
+    <div class="empty__desc">Crée une routine pour commencer à planifier tes séances.</div>
+    <a href="{{ url_for('main.routine_new') }}" class="btn btn--primary">
+      <i data-lucide="plus"></i>
+      <span>Créer une routine</span>
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('routinesList', () => ({
+      items: [],
+      query: '',
+      loading: true,
+
+      async load() {
+        try {
+          const r = await fetch('/api/routines');
+          const d = await r.json();
+          this.items = d.routines || d.items || [];
+        } catch(e) {}
+        this.loading = false;
+        this.$nextTick(() => window.lucide?.createIcons());
+      },
+
+      get filtered() {
+        const q = this.query.toLowerCase().trim();
+        if (!q) return this.items;
+        return this.items.filter(r => (r.title || r.name || '').toLowerCase().includes(q));
+      }
+    }));
+  });
+</script>
+{% endblock %}

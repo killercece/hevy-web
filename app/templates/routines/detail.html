@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Routine — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <a href="{{ url_for('main.routines_list') }}" class="app-header__back" aria-label="Retour">
+    <i data-lucide="arrow-left"></i>
+  </a>
+  <h1 class="app-header__title" x-data x-text="window.__routineTitle || 'Routine'">Routine</h1>
+  <div class="app-header__actions">
+    <a :href="`/routines/{{ routine_id }}/edit`" class="app-header__action" aria-label="Éditer">
+      <i data-lucide="edit-3"></i>
+    </a>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container" x-data="routineDetail({{ routine_id }})" x-init="load()">
+  <div x-show="loading" class="stack">
+    <div class="skeleton" style="height:80px;"></div>
+    <div class="skeleton" style="height:200px;"></div>
+  </div>
+
+  <template x-if="!loading && routine">
+    <div>
+      <div class="card mb-3">
+        <div class="text-xl font-bold mb-1" x-text="routine.title"></div>
+        <div class="text-sm text-secondary" x-text="(routine.exercises?.length || 0) + ' exercices'"></div>
+        <template x-if="routine.notes">
+          <div class="text-sm text-secondary mt-3" x-text="routine.notes"></div>
+        </template>
+      </div>
+
+      <template x-for="(ex, i) in (routine.exercises || [])" :key="i">
+        <div class="ex-block">
+          <div class="ex-block__header">
+            <div class="ex-block__icon"><i data-lucide="dumbbell"></i></div>
+            <div class="flex-1">
+              <div class="ex-block__name" x-text="ex.name"></div>
+              <div class="ex-block__muscle" x-text="ex.muscleGroup"></div>
+            </div>
+          </div>
+          <div class="text-sm text-secondary" x-text="(ex.sets?.length || ex.sets || 0) + ' sets'"></div>
+        </div>
+      </template>
+
+      <div class="workout-finish-bar">
+        <a :href="`/workout/start?routine_id={{ routine_id }}`" class="btn btn--primary btn--lg btn--block">
+          <i data-lucide="play"></i>
+          <span>Démarrer la routine</span>
+        </a>
+      </div>
+    </div>
+  </template>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('routineDetail', (id) => ({
+      id,
+      routine: null,
+      loading: true,
+      async load() {
+        try {
+          const r = await fetch(`/api/routines/${this.id}`);
+          const d = await r.json();
+          this.routine = d.routine || d;
+          window.__routineTitle = this.routine.title;
+          document.title = this.routine.title + ' — Hevy';
+        } catch(e) {}
+        this.loading = false;
+        this.$nextTick(() => window.lucide?.createIcons());
+      }
+    }));
+  });
+</script>
+{% endblock %}

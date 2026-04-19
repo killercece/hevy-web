@@ -1,0 +1,28 @@
+{# Carte routine — attend une variable `routine` #}
+<div class="card routine-card" onclick="window.location='{{ url_for('main.routine_detail', routine_id=routine.id) }}'">
+  <div class="routine-card__header">
+    <div class="flex-1">
+      <div class="routine-card__title">{{ routine.title }}</div>
+      <div class="routine-card__meta">
+        {{ routine.exercises|length }} exercice{{ 's' if routine.exercises|length > 1 else '' }}
+        {% if routine.last_performed %} · dernier : {{ routine.last_performed_relative }}{% endif %}
+      </div>
+    </div>
+    <span class="badge badge--accent">{{ routine.total_sets|default(0) }} sets</span>
+  </div>
+  {% if routine.exercises %}
+  <div class="routine-card__exercises">
+    {% for ex in routine.exercises[:4] %}{{ ex.name }}{% if not loop.last %} · {% endif %}{% endfor %}
+    {% if routine.exercises|length > 4 %} · +{{ routine.exercises|length - 4 }}{% endif %}
+  </div>
+  {% endif %}
+  <div class="routine-card__actions" onclick="event.stopPropagation()">
+    <a href="{{ url_for('main.workout_start', routine_id=routine.id) }}" class="btn btn--primary btn--sm flex-1">
+      <i data-lucide="play"></i>
+      <span>Start</span>
+    </a>
+    <a href="{{ url_for('main.routine_edit', routine_id=routine.id) }}" class="btn btn--outline btn--sm btn--icon" aria-label="Éditer">
+      <i data-lucide="edit-3"></i>
+    </a>
+  </div>
+</div>

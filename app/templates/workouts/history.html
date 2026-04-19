@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Historique — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <h1 class="app-header__title">Historique</h1>
+  <div class="app-header__actions">
+    <a href="{{ url_for('main.workout_start') }}" class="app-header__action" aria-label="Nouveau workout">
+      <i data-lucide="plus"></i>
+    </a>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container" x-data="historyFeed()" x-init="load()">
+  <div class="stats-row" x-show="stats">
+    <div class="stat">
+      <div class="stat__value" x-text="stats.workouts_count || 0"></div>
+      <div class="stat__label">Workouts</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value" x-text="stats.total_volume_display || '0 kg'"></div>
+      <div class="stat__label">Volume total</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value" x-text="stats.total_duration_display || '0h'"></div>
+      <div class="stat__label">Temps</div>
+    </div>
+  </div>
+
+  <div class="stack" x-show="workouts.length > 0">
+    <template x-for="w in workouts" :key="w.id">
+      <a :href="`/workouts/${w.id}`" class="workout-card" style="display:block;color:inherit;">
+        <div class="workout-card__header">
+          <span class="workout-card__date" x-text="w.date_relative || formatDate(w.end_time)"></span>
+          <template x-if="w.pr_count">
+            <span class="badge badge--pr">
+              <i data-lucide="trophy" style="width:10px;height:10px;"></i>
+              <span x-text="w.pr_count + ' PR'"></span>
+            </span>
+          </template>
+        </div>
+
+        <div class="workout-card__title" x-text="w.title || 'Workout'"></div>
+
+        <div class="workout-card__stats">
+          <span class="workout-card__stat">
+            <i data-lucide="clock"></i>
+            <span x-text="formatDuration(w.durationSeconds)"></span>
+          </span>
+          <span class="workout-card__stat">
+            <i data-lucide="weight"></i>
+            <span x-text="formatVolume(w.totalVolume)"></span>
+          </span>
+          <span class="workout-card__stat">
+            <i data-lucide="list-checks"></i>
+            <span x-text="(w.totalSets || 0) + ' sets'"></span>
+          </span>
+        </div>
+
+        <div class="workout-card__ex-list">
+          <template x-for="ex in (w.exerciseHistory || []).slice(0, 5)" :key="ex.exerciseId + ex.name">
+            <div class="workout-card__ex-line">
+              <span><strong x-text="(ex.sets || []).length + '×'"></strong> <span x-text="ex.name"></span></span>
+              <span x-text="bestSet(ex)"></span>
+            </div>
+          </template>
+          <template x-if="(w.exerciseHistory || []).length > 5">
+            <div class="workout-card__ex-line">
+              <span class="text-tertiary" x-text="'+ ' + ((w.exerciseHistory.length) - 5) + ' autres'"></span>
+            </div>
+          </template>
+        </div>
+      </a>
+    </template>
+  </div>
+
+  <div x-show="!loading && workouts.length === 0" class="empty">
+    <i data-lucide="history"></i>
+    <div class="empty__title">Aucun workout</div>
+    <div class="empty__desc">Ton historique s'affichera ici après ta première séance.</div>
+    <a href="{{ url_for('main.workout_start') }}" class="btn btn--primary">
+      <i data-lucide="play"></i>
+      <span>Démarrer un workout</span>
+    </a>
+  </div>
+
+  <div x-show="loading" class="stack">
+    <div class="skeleton" style="height:120px;"></div>
+    <div class="skeleton" style="height:120px;"></div>
+  </div>
+
+  <button x-show="hasMore" class="btn btn--outline btn--block mt-4" @click="loadMore" x-text="loadingMore ? 'Chargement...' : 'Charger plus'"></button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('historyFeed', () => ({
+      workouts: [],
+      stats: null,
+      loading: true,
+      loadingMore: false,
+      page: 1,
+      hasMore: false,
+
+      async load() {
+        try {
+          const r = await fetch('/api/workouts?per_page=20&page=1');
+          const d = await r.json();
+          this.workouts = d.items || d.workouts || [];
+          this.hasMore = d.has_more || false;
+          this.stats = d.stats || null;
+        } catch(e) {}
+        this.loading = false;
+        this.$nextTick(() => window.lucide?.createIcons());
+      },
+
+      async loadMore() {
+        this.loadingMore = true;
+        this.page += 1;
+        try {
+          const r = await fetch(`/api/workouts?per_page=20&page=${this.page}`);
+          const d = await r.json();
+          this.workouts = [...this.workouts, ...(d.items || d.workouts || [])];
+          this.hasMore = d.has_more || false;
+        } catch(e) {}
+        this.loadingMore = false;
+        this.$nextTick(() => window.lucide?.createIcons());
+      },
+
+      formatDuration(s) {
+        if (!s) return '—';
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+      },
+      formatVolume(v) {
+        if (!v) return '—';
+        if (v >= 1000) return (v / 1000).toFixed(1) + 't';
+        return Math.round(v) + ' kg';
+      },
+      formatDate(ts) {
+        if (!ts) return '';
+        const d = new Date(ts);
+        return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      },
+      bestSet(ex) {
+        const sets = (ex.sets || []).filter(s => s.completed !== false);
+        if (!sets.length) return '';
+        const best = sets.reduce((a, b) => ((a.weight || 0) * (a.reps || 0) > (b.weight || 0) * (b.reps || 0)) ? a : b, sets[0]);
+        return `${best.weight || 0} × ${best.reps || 0}`;
+      }
+    }));
+  });
+</script>
+{% endblock %}

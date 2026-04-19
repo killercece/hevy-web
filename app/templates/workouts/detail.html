@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Workout — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <a href="{{ url_for('main.workout_history') }}" class="app-header__back" aria-label="Retour">
+    <i data-lucide="arrow-left"></i>
+  </a>
+  <h1 class="app-header__title" x-data x-text="document.title.replace(' — Hevy', '') || 'Workout'">Workout</h1>
+  <div class="app-header__actions">
+    <button type="button" class="app-header__action" @click="$dispatch('delete-workout')" aria-label="Supprimer">
+      <i data-lucide="trash-2"></i>
+    </button>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container" x-data="workoutDetail({{ workout_id }})" x-init="load()"
+     @delete-workout.window="remove()">
+
+  <div x-show="loading" class="stack">
+    <div class="skeleton" style="height:140px;"></div>
+    <div class="skeleton" style="height:200px;"></div>
+  </div>
+
+  <template x-if="!loading && workout">
+    <div>
+      <div class="card mb-3">
+        <div class="text-sm text-secondary uppercase mb-2" x-text="formatDate(workout.end_time)"></div>
+        <div class="text-xl font-bold mb-3" x-text="workout.title || 'Workout'"></div>
+        <div class="stats-row" style="margin-bottom:0;">
+          <div class="stat">
+            <div class="stat__value" x-text="formatDuration(workout.durationSeconds)"></div>
+            <div class="stat__label">Durée</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" x-text="formatVolume(workout.totalVolume)"></div>
+            <div class="stat__label">Volume</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" x-text="workout.totalSets || 0"></div>
+            <div class="stat__label">Sets</div>
+          </div>
+        </div>
+      </div>
+
+      <template x-if="workout.notes">
+        <div class="card mb-3">
+          <div class="text-sm text-secondary mb-2">Notes</div>
+          <div x-text="workout.notes"></div>
+        </div>
+      </template>
+
+      <template x-for="ex in (workout.exerciseHistory || [])" :key="ex.exerciseId + ex.name">
+        <div class="ex-block">
+          <div class="ex-block__header">
+            <div class="ex-block__icon"><i data-lucide="dumbbell"></i></div>
+            <div class="flex-1">
+              <div class="ex-block__name" x-text="ex.name"></div>
+              <div class="ex-block__muscle" x-text="ex.muscleGroup"></div>
+            </div>
+          </div>
+
+          <div class="set-row__header">
+            <span>#</span>
+            <span>RPE</span>
+            <span>Kg</span>
+            <span>Reps</span>
+            <span></span>
+          </div>
+
+          <template x-for="(s, i) in (ex.sets || [])" :key="i">
+            <div class="set-row" :class="{
+                 'is-warmup': s.type === 'warmup',
+                 'is-drop': s.type === 'drop',
+                 'is-failure': s.type === 'failure' }">
+              <span class="set-row__num">
+                <span x-show="s.type === 'warmup'">W</span>
+                <span x-show="s.type === 'drop'">D</span>
+                <span x-show="s.type === 'failure'">F</span>
+                <span x-show="!s.type || s.type === 'normal'" x-text="i + 1"></span>
+              </span>
+              <span class="set-row__prev" x-text="s.rpe ? `RPE ${s.rpe}` : ''"></span>
+              <span class="set-row__input" style="background:transparent;" x-text="s.weight || '—'"></span>
+              <span class="set-row__input" style="background:transparent;" x-text="s.reps || '—'"></span>
+              <span></span>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </template>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('workoutDetail', (id) => ({
+      id,
+      workout: null,
+      loading: true,
+
+      async load() {
+        try {
+          const r = await fetch(`/api/workouts/${this.id}`);
+          const d = await r.json();
+          this.workout = d.workout || d;
+          document.title = (this.workout?.title || 'Workout') + ' — Hevy';
+        } catch(e) {}
+        this.loading = false;
+        this.$nextTick(() => window.lucide?.createIcons());
+      },
+
+      async remove() {
+        if (!confirm('Supprimer ce workout ?')) return;
+        const r = await fetch(`/api/workouts/${this.id}`, { method: 'DELETE' });
+        if (r.ok) window.location = '/workouts';
+      },
+
+      formatDuration(s) {
+        if (!s) return '—';
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+      },
+      formatVolume(v) {
+        if (!v) return '—';
+        if (v >= 1000) return (v / 1000).toFixed(1) + 't';
+        return Math.round(v) + ' kg';
+      },
+      formatDate(ts) {
+        if (!ts) return '';
+        return new Date(ts).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      }
+    }));
+  });
+</script>
+{% endblock %}

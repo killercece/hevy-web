@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}{% if routine_id %}Éditer{% else %}Nouvelle{% endif %} routine — Hevy{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <a href="{{ url_for('main.routines_list') }}" class="app-header__back" aria-label="Retour">
+    <i data-lucide="arrow-left"></i>
+  </a>
+  <h1 class="app-header__title">{% if routine_id %}Éditer routine{% else %}Nouvelle routine{% endif %}</h1>
+  <div class="app-header__actions">
+    <button type="submit" form="routine-form" class="btn btn--primary btn--sm">Save</button>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container" x-data="routineEditor({ id: {{ routine_id|tojson if routine_id else 'null' }} })">
+  <form id="routine-form" method="post" @submit.prevent="save">
+    <div class="stack">
+      <div class="input-group">
+        <label class="input-group__label">Nom de la routine</label>
+        <input class="input" type="text" x-model="data.title" placeholder="Ex: Push Day" required>
+      </div>
+
+      <div class="input-group">
+        <label class="input-group__label">Dossier (optionnel)</label>
+        <select class="input" x-model="data.folder_id">
+          <option value="">Aucun</option>
+          {% for folder in folders %}
+          <option value="{{ folder.id }}">{{ folder.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label class="input-group__label">Notes</label>
+        <textarea class="input" x-model="data.notes" placeholder="Instructions, rappels techniques..."></textarea>
+      </div>
+    </div>
+
+    <div class="section mt-4">
+      <div class="section__header">
+        <div class="section__title">Exercices</div>
+      </div>
+
+      <div class="stack--sm">
+        <template x-for="(ex, exIndex) in data.exercises" :key="exIndex">
+          <div class="routine-edit-ex">
+            <div class="routine-edit-ex__header">
+              <i data-lucide="grip-vertical" class="routine-edit-ex__drag"></i>
+              <span class="routine-edit-ex__name" x-text="ex.name"></span>
+              <button type="button" class="btn btn--icon btn--sm" @click="removeExercise(exIndex)" aria-label="Retirer">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+
+            <div class="stack--sm">
+              <div class="set-row__header">
+                <span>Set</span>
+                <span>Type</span>
+                <span>Kg</span>
+                <span>Reps</span>
+                <span></span>
+              </div>
+              <template x-for="(s, sIndex) in ex.sets" :key="sIndex">
+                <div class="routine-edit-set">
+                  <span class="set-row__num" x-text="sIndex + 1"></span>
+                  <select class="input input--num" x-model="s.type" style="padding:6px;font-size:12px;">
+                    <option value="normal">Normal</option>
+                    <option value="warmup">Warm-up</option>
+                    <option value="drop">Drop set</option>
+                    <option value="failure">Failure</option>
+                  </select>
+                  <input class="input input--num" type="number" inputmode="decimal" step="0.5" x-model.number="s.weight" placeholder="—">
+                  <input class="input input--num" type="number" inputmode="numeric" x-model.number="s.reps" placeholder="—">
+                  <button type="button" class="btn btn--icon btn--ghost btn--sm" @click="removeSet(exIndex, sIndex)" aria-label="Retirer">
+                    <i data-lucide="x"></i>
+                  </button>
+                </div>
+              </template>
+            </div>
+
+            <button type="button" class="ex-block__add-set" @click="addSet(exIndex)">
+              <i data-lucide="plus"></i>
+              <span>Ajouter un set</span>
+            </button>
+          </div>
+        </template>
+
+        <button type="button" class="btn btn--outline btn--block" @click="openPicker = true">
+          <i data-lucide="plus"></i>
+          <span>Ajouter un exercice</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="stack mt-4">
+      <button type="submit" class="btn btn--primary btn--lg btn--block">
+        <i data-lucide="check"></i>
+        <span>Enregistrer la routine</span>
+      </button>
+      {% if routine_id %}
+      <button type="button" class="btn btn--outline btn--block" @click="duplicate">
+        <i data-lucide="copy"></i>
+        <span>Dupliquer</span>
+      </button>
+      <button type="button" class="btn btn--danger btn--block" @click="remove">
+        <i data-lucide="trash-2"></i>
+        <span>Supprimer</span>
+      </button>
+      {% endif %}
+    </div>
+  </form>
+
+  {# Exercise picker modal #}
+  <template x-if="openPicker">
+    <div class="modal-backdrop" @click.self="openPicker = false">
+      <div class="modal">
+        <div class="modal__handle"></div>
+        <div class="modal__header">
+          <div class="modal__title">Choisir un exercice</div>
+          <button type="button" class="modal__close" @click="openPicker = false"><i data-lucide="x"></i></button>
+        </div>
+        <div class="searchbar mb-3">
+          <i data-lucide="search"></i>
+          <input type="text" placeholder="Rechercher..." x-model="pickerQuery">
+        </div>
+        <div class="ex-list" style="max-height: 50vh; overflow-y: auto;">
+          <template x-for="ex in filteredExercises" :key="ex.id">
+            <div class="ex-list__item" @click="addExercise(ex); openPicker = false">
+              <div class="ex-list__img"><i data-lucide="dumbbell"></i></div>
+              <div class="ex-list__body">
+                <div class="ex-list__name" x-text="ex.name"></div>
+                <div class="ex-list__meta">
+                  <span x-text="ex.muscleGroup"></span>
+                  <span x-text="'· ' + ex.equipment"></span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Alpine component pour l'éditeur de routine
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('routineEditor', (routine) => ({
+      data: {
+        id: routine.id || null,
+        title: routine.title || routine.name || '',
+        folder_id: routine.folder_id || '',
+        notes: routine.notes || '',
+        exercises: (routine.exercises || []).map(ex => ({
+          exerciseId: ex.exerciseId || ex.exercise_id,
+          name: ex.name,
+          muscleGroup: ex.muscleGroup || ex.muscle_group,
+          notes: ex.notes || '',
+          rest_seconds: ex.rest_seconds || 90,
+          sets: Array.isArray(ex.sets) ? ex.sets.map(s => ({
+            type: s.type || s.set_type || 'normal',
+            reps: s.target_reps ?? s.reps ?? null,
+            weight: s.target_weight ?? s.weight ?? null,
+            rpe: s.target_rpe ?? s.rpe ?? null
+          })) : []
+        }))
+      },
+      openPicker: false,
+      pickerQuery: '',
+      exerciseLibrary: [],
+
+      init() {
+        // Si routine existante (id), charger depuis API
+        if (this.data.id && !this.data.exercises.length) {
+          fetch(`/api/routines/${this.data.id}`)
+            .then(r => r.json())
+            .then(d => {
+              const r = d.routine || d;
+              this.data.title = r.title || r.name || '';
+              this.data.notes = r.notes || '';
+              this.data.folder_id = r.folder_id || '';
+              this.data.exercises = (r.exercises || []).map(ex => ({
+                exerciseId: ex.exerciseId || ex.exercise_id,
+                name: ex.name,
+                muscleGroup: ex.muscleGroup,
+                notes: ex.notes || '',
+                rest_seconds: ex.rest_seconds || 90,
+                sets: Array.isArray(ex.sets) ? ex.sets.map(s => ({
+                  type: s.set_type || 'normal',
+                  reps: s.target_reps,
+                  weight: s.target_weight,
+                  rpe: s.target_rpe
+                })) : []
+              }));
+              this.$nextTick(() => window.lucide?.createIcons());
+            })
+            .catch(() => {});
+        }
+        fetch('/api/exercises')
+          .then(r => r.json())
+          .then(d => this.exerciseLibrary = d.items || d.exercises || d)
+          .catch(() => {});
+      },
+
+      get filteredExercises() {
+        const q = this.pickerQuery.toLowerCase().trim();
+        if (!q) return this.exerciseLibrary;
+        return this.exerciseLibrary.filter(e => e.name.toLowerCase().includes(q));
+      },
+
+      addExercise(ex) {
+        this.data.exercises.push({
+          exerciseId: ex.id,
+          name: ex.name,
+          muscleGroup: ex.muscleGroup,
+          sets: [{ type: 'normal', reps: null, weight: null }]
+        });
+        this.$nextTick(() => window.lucide?.createIcons());
+      },
+
+      removeExercise(i) {
+        this.data.exercises.splice(i, 1);
+      },
+
+      addSet(exIndex) {
+        const ex = this.data.exercises[exIndex];
+        const last = ex.sets[ex.sets.length - 1] || {};
+        ex.sets.push({ type: 'normal', reps: last.reps || null, weight: last.weight || null });
+      },
+
+      removeSet(exIndex, sIndex) {
+        this.data.exercises[exIndex].sets.splice(sIndex, 1);
+      },
+
+      async save() {
+        const url = this.data.id
+          ? `/api/routines/${this.data.id}`
+          : '/api/routines';
+        const method = this.data.id ? 'PATCH' : 'POST';
+        // Adapter les champs au format backend (snake_case)
+        const payload = {
+          name: this.data.title,
+          notes: this.data.notes,
+          folder_id: this.data.folder_id || null,
+          exercises: this.data.exercises.map((ex, i) => ({
+            exercise_id: ex.exerciseId,
+            order_index: i,
+            notes: ex.notes || null,
+            rest_seconds: ex.rest_seconds || 90,
+            sets: (ex.sets || []).map((s, j) => ({
+              order_index: j,
+              set_type: s.type || 'normal',
+              target_reps: s.reps,
+              target_weight: s.weight,
+              target_rpe: s.rpe
+            }))
+          }))
+        };
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          window.location = '/routines';
+        } else {
+          const err = await res.json().catch(() => ({}));
+          alert('Erreur : ' + (err.error || 'impossible d\'enregistrer'));
+        }
+      },
+
+      async duplicate() {
+        const copy = { ...this.data, id: null, title: this.data.title + ' (copie)' };
+        const res = await fetch('/api/routines', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(copy)
+        });
+        if (res.ok) window.location = '/routines';
+      },
+
+      async remove() {
+        if (!confirm('Supprimer cette routine ?')) return;
+        const res = await fetch(`/api/routines/${this.data.id}`, { method: 'DELETE' });
+        if (res.ok) window.location = '/routines';
+      }
+    }));
+  });
+</script>
+{% endblock %}
