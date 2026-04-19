@@ -31,8 +31,8 @@ instance/
 .env.local
 .env.*.local
 
-# Data
-data/
+# Data (DB SQLite uniquement — app/data/ contient des ressources versionnées)
+/data/
 !data/.gitkeep
 
 # Migrations (garder structure, ignorer versions auto)
